@@ -1,0 +1,2304 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Стиль &amp; Образ — Магазин одежды, обуви и аксессуаров</title>
+  <meta name="description" content="Интернет-магазин одежды и аксессуаров Стиль & Образ. Осенняя коллекция '26, скидки до -40% на верхнюю одежду, доставка по всей стране." />
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: #ffffff;
+      color: #111827;
+    }
+    .brand-serif {
+      font-family: 'Playfair Display', Georgia, serif;
+    }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* Кастомный ползунок цены как на макете */
+    input[type="range"].price-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 3px;
+      background: #111827;
+      border-radius: 999px;
+      outline: none;
+    }
+    input[type="range"].price-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #111827;
+      cursor: pointer;
+      border: 2px solid #ffffff;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+    }
+
+    /* Плавающий виджет ИИ-Стилиста */
+    .ai-fab {
+      position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 45;
+      display: inline-flex; align-items: center; gap: .6rem;
+      padding: .8rem 1.2rem; border-radius: 999px;
+      background: #111827; color: #fff;
+      font-weight: 700; font-size: .84rem; cursor: pointer;
+      box-shadow: 0 14px 32px -8px rgba(17, 24, 39, .55);
+      border: 1px solid rgba(255,255,255,.15);
+      transition: transform .15s, background-color .15s;
+    }
+    .ai-fab:hover { transform: translateY(-2px); background: #1f2937; }
+    .ai-panel {
+      position: fixed; right: 1.25rem; bottom: 4.8rem; z-index: 45;
+      width: min(400px, calc(100vw - 2rem)); height: min(540px, calc(100vh - 7rem));
+      display: flex; flex-direction: column; border-radius: 1.25rem; overflow: hidden;
+      background: #ffffff; border: 1px solid #e5e7eb;
+      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, .35);
+    }
+    .ai-panel.hidden { display: none; }
+    .ai-msg {
+      max-width: 88%; padding: .7rem .9rem; border-radius: .9rem;
+      font-size: .82rem; line-height: 1.45; word-wrap: break-word;
+    }
+    .ai-msg-user {
+      align-self: flex-end; color: #fff;
+      background: #111827; border-bottom-right-radius: .25rem;
+    }
+    .ai-msg-bot {
+      align-self: flex-start; color: #111827;
+      background: #f3f4f6; border: 1px solid #e5e7eb;
+      border-bottom-left-radius: .25rem;
+    }
+  </style>
+</head>
+<body class="antialiased selection:bg-slate-900 selection:text-white">
+  <div id="app"></div>
+
+  <!-- ИИ-СТИЛИСТ МАГАЗИНА «СТИЛЬ & ОБРАЗ» -->
+  <button id="aiFab" class="ai-fab" type="button" aria-label="Открыть Стиль AI">
+    <svg class="w-4 h-4 text-amber-300" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2L14.4 8.6L21 11L14.4 13.4L12 20L9.6 13.4L3 11L9.6 8.6L12 2Z"/>
+    </svg>
+    <span>Стиль AI • Подбор образа</span>
+  </button>
+
+  <section id="aiPanel" class="ai-panel hidden" aria-label="Стиль AI Чат">
+    <div class="flex items-center justify-between px-4 py-3 bg-slate-900 text-white">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-lg bg-white/15 grid place-items-center font-bold text-xs text-amber-300">AI</div>
+        <div>
+          <div class="font-bold text-sm leading-tight">Стиль AI • Персональный стилист</div>
+          <div class="text-[11px] text-slate-300">Подбор размера, образов и наличие в Supabase</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <button id="aiClear" type="button" class="px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-[11px]">Очистить</button>
+        <button id="aiClose" type="button" class="w-7 h-7 rounded bg-white/10 hover:bg-white/20 text-xs font-bold">✕</button>
+      </div>
+    </div>
+
+    <div id="aiMessages" class="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
+      <div class="ai-msg ai-msg-bot">
+        Здравствуйте! Я <b>Стиль AI</b> — ваш онлайн-стилист в магазине <b>«Стиль &amp; Образ»</b>.<br><br>
+        Помогу подобрать размер верхней одежды (<b>XS–XXL</b>), расскажу про хиты <b>Осенней коллекции '26</b>, действующие промокоды и статус вашего заказа из базы Supabase!
+      </div>
+    </div>
+
+    <div class="px-3 py-2 border-t border-slate-100 flex gap-1.5 overflow-x-auto no-scrollbar bg-slate-50">
+      <button type="button" class="ai-quick px-2.5 py-1 rounded-full bg-white border border-slate-300 text-[11px] font-medium hover:border-slate-900 shrink-0" data-prompt="Какие сейчас главные бестселлеры мужской и женской верхней одежды?">🧥 Хиты коллекции '26</button>
+      <button type="button" class="ai-quick px-2.5 py-1 rounded-full bg-white border border-slate-300 text-[11px] font-medium hover:border-slate-900 shrink-0" data-prompt="Помоги подобрать размер верхней одежды по таблице размеров.">📏 Таблица размеров</button>
+      <button type="button" class="ai-quick px-2.5 py-1 rounded-full bg-white border border-slate-300 text-[11px] font-medium hover:border-slate-900 shrink-0" data-prompt="Какие промокоды действуют в корзине на скидку?">🎁 Промокоды</button>
+    </div>
+
+    <form id="aiForm" class="p-3 border-t border-slate-200 flex items-center gap-2 bg-white">
+      <input id="aiInput" type="text" class="flex-1 px-3 py-2 rounded-lg border border-slate-300 text-xs focus:outline-none focus:border-slate-900" placeholder="Спросите про пальто, парки, размеры, скидки..." autocomplete="off" required />
+      <button id="aiSendBtn" type="submit" class="px-3.5 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shrink-0">Отправить</button>
+    </form>
+  </section>
+
+  <script src="images.js"></script>
+  <script>
+    // ============================================================================
+    // 🔑 БЛОК ДЛЯ ВСТАВКИ КЛЮЧЕЙ ВАШЕГО НОВОГО ПРОЕКТА SUPABASE (КЛИЕНТСКАЯ ВЕРСИЯ)
+    // Вы можете вставить свои ключи прямо сюда ИЛИ в файл shared-data.js:
+    // ============================================================================
+    window.SUPABASE_KEYS_OVERRIDE = {
+      url:    "https://zpmapedzbbrfxlmuncbd.supabase.co",
+      key:    "sb_publishable_Q8bp5yDcT3g-b0K7tnvbfw_RYFYDkMi",
+      bucket: "product-images", // Бакет в Supabase Storage для хранения фото одежды
+      aiFn:   "style-ai"
+    };
+  </script>
+  <script src="shared-data.js"></script>
+  <script>
+    const IMAGES = window.STYLE_IMAGES || {};
+    const CATEGORIES = window.STYLE_CATEGORIES;
+    const SIZES = window.STYLE_SIZES;
+    const COLORS = window.STYLE_COLORS;
+    const BRANDS = window.STYLE_BRANDS;
+    const SEASONS = window.STYLE_SEASONS;
+    const PROMOS = window.STYLE_PROMOS;
+    const STATUS_META = window.STYLE_ORDER_STATUS_META;
+    const fmt = window.fmtKZT;
+
+    const initialCfg = window.loadStyleConfig();
+    const initialDb = window.loadSharedDb();
+
+    // Поддержка URL-параметра ?view=cart или ?cat=women для быстрой навигации
+    const urlParams = new URLSearchParams(window.location.search);
+    const startView = urlParams.get("view") === "cart" ? "cart" : "catalog";
+    const startCat = urlParams.get("cat") || "men";
+
+    let savedCustomer = null;
+    try {
+      const rawU = localStorage.getItem("style_obraz_customer_v2");
+      if (rawU) savedCustomer = JSON.parse(rawU);
+    } catch (_) {}
+
+    const state = {
+      view: startView,          // 'catalog' | 'cart' | 'favorites' | 'orders'
+      activeCat: startCat,      // 'new' | 'women' | 'men' | 'kids' | 'brands' | 'sale' | 'sport' | 'shoes'
+      search: "",
+      sortBy: "popular",        // 'popular' | 'price_asc' | 'price_desc' | 'discount' | 'newest'
+      showAllPages: false,
+      showMoreCount: 4,
+      activePage: 1,
+
+      // Фильтры левой панели (точно как на image.png и image_2.png)
+      selectedSizes: [],
+      selectedColorHex: "",
+      minPrice: 5000,
+      maxPrice: 150000,
+      selectedBrands: [],
+      selectedSeasons: [],
+      openSizeFilter: true,
+      openBrandFilter: false,
+      openSeasonFilter: false,
+
+      // Модальные окна
+      quickViewProd: null,
+      quickViewSize: "M",
+      quickViewColor: "",
+      sizeGuideOpen: false,
+      infoModal: null,          // 'delivery' | 'stores' | 'support'
+      authModalOpen: false,
+      authMode: "login",        // 'login' | 'register'
+      checkoutModalOpen: false,
+      oneClickModalOpen: false,
+      sbModalOpen: false,
+      sbSyncing: false,
+      sbStatusMsg: "",
+
+      // Данные покупателя и оформления заказа
+      user: savedCustomer,
+      customerName: savedCustomer?.name || "Айгерим Сапарова",
+      customerPhone: savedCustomer?.phone || "+7 (701) 555-44-11",
+      customerEmail: savedCustomer?.email || "aigerim@mail.kz",
+      customerCity: "Алматы",
+      customerAddress: "пр. Достык, 89, кв. 24",
+      deliveryType: "courier",  // 'courier' | 'pickup' | 'post'
+      paymentMethod: "kaspi",   // 'kaspi' | 'card' | 'apple_pay' | 'cod'
+      paymentScenario: "success",
+
+      // Промокод в корзине
+      promoInput: "",
+      appliedPromo: null,
+      promoMessage: "",
+
+      // Настройки Supabase + Storage
+      sbUrl: initialCfg.url,
+      sbKey: initialCfg.key,
+      sbBucket: initialCfg.bucket || "product-images",
+      aiFn: initialCfg.aiFn || "style-ai",
+      sbConnected: false,
+
+      // Синхронизируемые коллекции БД
+      products: initialDb.products,
+      cart: initialDb.cart,
+      favorites: initialDb.favorites,
+      orders: initialDb.orders,
+      paymentLogs: initialDb.paymentLogs,
+      toast: ""
+    };
+
+    let sbClient = null;
+    let sbChannel = null;
+    let aiHistory = [];
+
+    function getSbClient() {
+      const cleanUrl = window.cleanSupabaseUrl(state.sbUrl);
+      if (!cleanUrl || !state.sbKey || !window.supabase) return null;
+      if (sbClient) return sbClient;
+      try {
+        sbClient = window.supabase.createClient(cleanUrl, state.sbKey);
+        return sbClient;
+      } catch (_) {
+        return null;
+      }
+    }
+
+    function persistLocal() {
+      window.saveSharedDb({
+        products: state.products,
+        cart: state.cart,
+        favorites: state.favorites,
+        orders: state.orders,
+        paymentLogs: state.paymentLogs
+      });
+      try {
+        if (state.user) localStorage.setItem("style_obraz_customer_v2", JSON.stringify(state.user));
+        else localStorage.removeItem("style_obraz_customer_v2");
+      } catch (_) {}
+    }
+
+    // Мгновенная синхронизация между вкладками index.html и staff.html
+    window.addEventListener("storage", (e) => {
+      if (e.key === "style_obraz_shared_db_v4") {
+        const fresh = window.loadSharedDb();
+        state.products = fresh.products;
+        state.orders = fresh.orders;
+        render();
+      }
+    });
+
+    async function syncFromSupabase() {
+      const sb = getSbClient();
+      if (!sb) {
+        state.sbConnected = false;
+        return;
+      }
+      try {
+        const [prodRes, ordRes] = await Promise.all([
+          sb.from("products").select("*").order("popularity", { ascending: false }),
+          sb.from("orders").select("*").order("created_at", { ascending: false }).limit(100)
+        ]);
+
+        if (!prodRes.error) {
+          state.sbConnected = true;
+        }
+
+        const clothingSlugs = new Set(["new", "women", "men", "kids", "brands", "sale", "sport", "shoes"]);
+        if (Array.isArray(prodRes.data) && prodRes.data.length > 0) {
+          // Фильтруем только товары одежды (на случай если подключён проект со старыми данными)
+          const validRows = prodRes.data.filter((p) => p.sku || clothingSlugs.has(p.category_slug));
+          if (validRows.length > 0) {
+            const cloudProds = validRows.map((p, idx) => ({
+              id: String(p.id),
+              sku: p.sku || `WO-${4500 + idx}`,
+              category_slug: p.category_slug || "men",
+              subcategory: p.subcategory || "Верхняя одежда",
+              brand: p.brand || "Nordic Shield",
+              name: p.name,
+              description: p.description || "",
+              purchase_price: Number(p.purchase_price || 18000),
+              base_price: Number(p.base_price || 45000),
+              old_price: p.old_price ? Number(p.old_price) : null,
+              discount_percent: Number(p.discount_percent || 0),
+              badge: p.badge || (p.is_sale ? `SALE -${p.discount_percent || 20}%` : p.is_new ? "NEW" : ""),
+              sizes: Array.isArray(p.sizes) && p.sizes.length ? p.sizes.map((s) => typeof s === "string" ? s : (s.label || "M")) : ["S", "M", "L", "XL"],
+              colors: Array.isArray(p.colors) && p.colors.length ? p.colors : [{ name: "Черный", hex: "#0d0f12" }],
+              season: p.season || "Осень-Зима '26",
+              image: p.image_url || p.image || IMAGES.men_parka,
+              gallery: Array.isArray(p.gallery_urls) && p.gallery_urls.length ? p.gallery_urls : [p.image_url || IMAGES.men_parka],
+              stock_qty: Number(p.stock_qty ?? 35),
+              min_stock: Number(p.min_stock ?? 5),
+              warehouse: p.warehouse || "Основной склад",
+              is_available: p.is_available !== false,
+              is_published: p.is_published !== false,
+              is_new: Boolean(p.is_new),
+              is_sale: Boolean(p.is_sale),
+              popularity: Number(p.popularity || 90)
+            }));
+
+            const cloudIds = new Set(cloudProds.map((x) => x.id));
+            state.products = [
+              ...cloudProds,
+              ...state.products.filter((loc) => !cloudIds.has(loc.id))
+            ];
+          }
+        }
+
+        if (Array.isArray(ordRes.data) && ordRes.data.length > 0) {
+          state.orders = ordRes.data.map((o) => ({
+            id: String(o.id),
+            number: Number(o.order_number || 8401),
+            customer: o.customer_name || "Покупатель",
+            phone: o.customer_phone || "",
+            email: o.customer_email || "",
+            deliveryType: o.delivery_type || "courier",
+            city: o.city || "Алматы",
+            address: o.address || "",
+            paymentMethod: o.payment_method || "kaspi",
+            paymentStatus: o.payment_status || "paid",
+            transactionId: o.transaction_id || "",
+            status: o.status || "new",
+            subtotal: Number(o.subtotal_amount || o.total_amount || 0),
+            discount: Number(o.discount_amount || 0),
+            total: Number(o.total_amount || 0),
+            createdAt: o.created_at ? new Date(o.created_at).getTime() : Date.now(),
+            items: Array.isArray(o.items) ? o.items : []
+          }));
+        }
+
+        persistLocal();
+        render();
+
+        if (!sbChannel) {
+          sbChannel = sb
+            .channel("style-obraz-client-live")
+            .on("postgres_changes", { event: "*", schema: "public", table: "products" }, () => syncFromSupabase())
+            .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => syncFromSupabase())
+            .subscribe();
+        }
+      } catch (err) {
+        console.warn("Supabase client sync fallback:", err);
+      }
+    }
+
+    function notify(msg) {
+      state.toast = msg;
+      render();
+      setTimeout(() => {
+        if (state.toast === msg) {
+          state.toast = "";
+          render();
+        }
+      }, 3400);
+    }
+
+    function getFilteredProducts() {
+      let list = state.products.filter((p) => p.is_published !== false);
+
+      // Фильтр по вкладке категории
+      if (state.activeCat === "women") {
+        list = list.filter((p) => p.category_slug === "women");
+      } else if (state.activeCat === "men") {
+        list = list.filter((p) => p.category_slug === "men");
+      } else if (state.activeCat === "kids") {
+        list = list.filter((p) => p.category_slug === "kids");
+      } else if (state.activeCat === "sport") {
+        list = list.filter((p) => p.category_slug === "sport");
+      } else if (state.activeCat === "shoes") {
+        list = list.filter((p) => p.category_slug === "shoes");
+      } else if (state.activeCat === "sale") {
+        list = list.filter((p) => p.is_sale || Number(p.discount_percent || 0) > 0 || (p.badge && p.badge.includes("SALE")));
+      } else if (state.activeCat === "new") {
+        list = list.filter((p) => p.is_new || (p.badge && p.badge.includes("NEW")) || p.category_slug === "men" || p.category_slug === "women");
+      }
+      // 'brands' показывает все брендовые модели
+
+      // Поиск
+      if (state.search.trim()) {
+        const q = state.search.trim().toLowerCase();
+        list = list.filter((p) =>
+          (p.name || "").toLowerCase().includes(q) ||
+          (p.brand || "").toLowerCase().includes(q) ||
+          (p.sku || "").toLowerCase().includes(q) ||
+          (p.description || "").toLowerCase().includes(q)
+        );
+      }
+
+      // Фильтр по размерам (XS, S, M, L, XL, XXL)
+      if (state.selectedSizes.length > 0) {
+        list = list.filter((p) =>
+          Array.isArray(p.sizes) && state.selectedSizes.some((sz) => p.sizes.includes(sz))
+        );
+      }
+
+      // Фильтр по цвету
+      if (state.selectedColorHex) {
+        const targetCol = COLORS.find((c) => c.hex === state.selectedColorHex);
+        list = list.filter((p) => {
+          if (!Array.isArray(p.colors)) return true;
+          return p.colors.some((c) => c.hex === state.selectedColorHex || (targetCol && c.name === targetCol.name));
+        });
+      }
+
+      // Фильтр по цене
+      list = list.filter((p) => Number(p.base_price || 0) >= state.minPrice && Number(p.base_price || 0) <= state.maxPrice);
+
+      // Фильтр по бренду
+      if (state.selectedBrands.length > 0) {
+        list = list.filter((p) => state.selectedBrands.includes(p.brand));
+      }
+
+      // Фильтр по сезону
+      if (state.selectedSeasons.length > 0) {
+        list = list.filter((p) => state.selectedSeasons.includes(p.season));
+      }
+
+      // Сортировка
+      if (state.sortBy === "price_asc") {
+        list.sort((a, b) => Number(a.base_price) - Number(b.base_price));
+      } else if (state.sortBy === "price_desc") {
+        list.sort((a, b) => Number(b.base_price) - Number(a.base_price));
+      } else if (state.sortBy === "discount") {
+        list.sort((a, b) => Number(b.discount_percent || 0) - Number(a.discount_percent || 0));
+      } else if (state.sortBy === "newest") {
+        list.sort((a, b) => (b.is_new ? 1 : 0) - (a.is_new ? 1 : 0));
+      } else {
+        list.sort((a, b) => Number(b.popularity || 90) - Number(a.popularity || 90));
+      }
+
+      return list;
+    }
+
+    // Расчёт сумм корзины (точно как на макете image_3.png: Товары 3 шт. = 142 900 ₸, Скидка по акции = -19 500 ₸, Итого = 123 400 ₸)
+    function computeCartTotals() {
+      const totalQty = state.cart.reduce((s, it) => s + Number(it.qty || 1), 0);
+      const itemsSubtotal = state.cart.reduce((s, it) => s + Number(it.price || 0) * Number(it.qty || 1), 0);
+
+      // Акционная скидка (по товарам со скидкой SALE -30%, например пальто Grace & Style: 65 000 - 45 500 = 19 500 ₸)
+      const actionDiscount = state.cart.reduce((s, it) => {
+        const perUnitDisc = it.promo_discount !== undefined
+          ? Number(it.promo_discount || 0)
+          : (it.old_price && Number(it.old_price) > Number(it.price) ? Number(it.old_price) - Number(it.price) : 0);
+        return s + perUnitDisc * Number(it.qty || 1);
+      }, 0);
+
+      const afterAction = Math.max(0, itemsSubtotal - actionDiscount);
+      const promoDiscount = state.appliedPromo
+        ? Math.round(afterAction * (Number(state.appliedPromo.discount || 0) / 100))
+        : 0;
+
+      const totalDiscount = actionDiscount + promoDiscount;
+      const finalTotal = Math.max(0, itemsSubtotal - totalDiscount);
+      const deliveryCost = finalTotal >= 20000 || finalTotal === 0 ? 0 : 2500;
+
+      return {
+        totalQty,
+        itemsSubtotal,
+        actionDiscount,
+        promoDiscount,
+        totalDiscount,
+        deliveryCost,
+        finalTotal: finalTotal + deliveryCost
+      };
+    }
+
+    // ==================== ВЕРХНЯЯ ШАПКА И МЕНЮ (image.png, image_2.png, image_3.png) ====================
+    function renderHeader() {
+      const { totalQty } = computeCartTotals();
+      const favCount = state.favorites.length;
+
+      return `
+        <!-- Верхняя сервисная панель -->
+        <div class="bg-[#f5f5f5] border-b border-slate-200/80 text-[12px] text-slate-700">
+          <div class="max-w-[1280px] mx-auto px-4 sm:px-6 h-8 flex items-center justify-between">
+            <div class="flex items-center gap-4">
+              <a href="staff.html" class="inline-flex items-center gap-1.5 font-semibold text-slate-900 hover:text-blue-700 transition">
+                <span>🏢</span>
+                <span>Внутренний портал персонала (Версия 2)</span>
+              </a>
+              <button id="open-sb-modal-btn" type="button" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-white border border-slate-300 hover:border-slate-900 text-[11px] font-medium transition">
+                <span class="w-2 h-2 rounded-full ${state.sbConnected ? "bg-emerald-500" : state.sbUrl ? "bg-amber-500" : "bg-slate-400"}"></span>
+                <span>🔑 ${state.sbConnected ? "Supabase + Storage подключены" : "Вставить ключи Supabase"}</span>
+              </button>
+            </div>
+            <div class="flex items-center gap-6">
+              <button type="button" class="info-link-btn hover:text-slate-950 transition" data-info="delivery">Доставка по всей стране</button>
+              <button type="button" class="info-link-btn hover:text-slate-950 transition" data-info="stores">Адреса магазинов</button>
+              <button type="button" class="info-link-btn hover:text-slate-950 transition" data-info="support">Поддержка</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Основная шапка с логотипом-вешалкой, поиском и иконками -->
+        <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
+          <div class="max-w-[1280px] mx-auto px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-4">
+            <!-- Логотип Стиль & Образ -->
+            <button id="logo-home-btn" type="button" class="flex items-center gap-3 text-left group">
+              <div class="flex flex-col">
+                <div class="flex items-center gap-2.5">
+                  <!-- Иконка вешалки точно как на макете -->
+                  <svg class="w-9 h-7 text-slate-900 shrink-0" viewBox="0 0 44 28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 8.5C22 6.5 23.6 5 25.5 5C27.4 5 29 6.5 29 8.5C29 10.2 27.8 11.4 26.2 12L22 13.5"/>
+                    <path d="M22 13.5L4 22.5C2.7 23.1 3.1 25 4.6 25H39.4C40.9 25 41.3 23.1 40 22.5L22 13.5Z"/>
+                  </svg>
+                  <span class="brand-serif text-2xl sm:text-[26px] font-semibold tracking-tight text-slate-900">Стиль &amp; Образ</span>
+                </div>
+                <span class="text-[11px] text-slate-500 tracking-wide -mt-0.5">Магазин одежды и аксессуаров</span>
+              </div>
+            </button>
+
+            <!-- Поисковая строка -->
+            <div class="flex-1 max-w-[540px] mx-2">
+              <div class="relative">
+                <input
+                  id="catalog-search-input"
+                  type="text"
+                  value="${escapeAttr(state.search)}"
+                  placeholder="Искать одежду, обувь, аксессуары..."
+                  class="w-full h-10 pl-4 pr-10 rounded-full bg-[#f8f9fa] border border-slate-300 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-slate-900 transition"
+                />
+                <svg class="w-4 h-4 text-slate-600 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="11" cy="11" r="7"></circle>
+                  <line x1="20" y1="20" x2="16.2" y2="16.2"></line>
+                </svg>
+              </div>
+            </div>
+
+            <!-- Правый блок: Войти, Избранное, Корзина -->
+            <div class="flex items-center gap-4 sm:gap-5">
+              <button id="open-auth-btn" type="button" class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#efefef] hover:bg-slate-200 text-slate-900 text-xs sm:text-sm font-medium transition">
+                <svg class="w-4 h-4 text-slate-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <circle cx="12" cy="8" r="4"></circle>
+                  <path d="M5 20c1.5-3.5 4.2-5 7-5s5.5 1.5 7 5"></path>
+                </svg>
+                <span>${state.user ? escapeHtml(state.user.name.split(" ")[0]) : "Войти"}</span>
+              </button>
+
+              <button id="open-fav-btn" type="button" class="relative flex flex-col items-center text-slate-800 hover:text-slate-950 transition">
+                <svg class="w-5 h-5 ${state.view === "favorites" ? "fill-rose-500 text-rose-500" : ""}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <path d="M12 20.5s-7.5-4.35-9.5-8.5C1.1 8.9 3.2 5 6.8 5c2.1 0 3.9 1.2 5.2 2.9C13.3 6.2 15.1 5 17.2 5c3.6 0 5.7 3.9 4.3 7-2 4.15-9.5 8.5-9.5 8.5z"></path>
+                </svg>
+                <span class="text-[11px] mt-0.5">Избранное</span>
+                ${favCount > 0 ? `<span class="absolute -top-1 right-1 w-4 h-4 rounded-full bg-slate-800 text-white text-[10px] font-bold grid place-items-center">${favCount}</span>` : ""}
+              </button>
+
+              <button id="open-cart-btn" type="button" class="relative flex flex-col items-center ${state.view === "cart" ? "text-[#1d68b8] font-semibold" : "text-slate-800 hover:text-slate-950"} transition">
+                <div class="relative">
+                  <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <path d="M6 7h12l1 13H5L6 7z"></path>
+                    <path d="M9 7V5a3 3 0 0 1 6 0v2"></path>
+                  </svg>
+                  <span class="absolute -top-1.5 -right-2.5 w-4 h-4 rounded-full ${state.view === "cart" ? "bg-[#1d68b8]" : "bg-slate-900"} text-white text-[10px] font-bold grid place-items-center">${totalQty}</span>
+                </div>
+                <span class="text-[11px] mt-0.5">Корзина</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Навигация по категориям (Новинки, Женщинам, Мужчинам, Детям, Бренды, Распродажа %, Спортивный стиль, Обувь) -->
+          <nav class="border-t border-slate-200 bg-white">
+            <div class="max-w-[1280px] mx-auto px-4 sm:px-6 flex items-center justify-between overflow-x-auto no-scrollbar">
+              ${CATEGORIES.map((cat) => {
+                const isActive = state.view === "catalog" && state.activeCat === cat.slug;
+                return `
+                  <button
+                    type="button"
+                    class="cat-tab-btn py-3 px-3 text-[13.5px] whitespace-nowrap border-b-2 transition ${
+                      isActive
+                        ? "border-slate-900 font-semibold text-slate-950"
+                        : "border-transparent font-normal hover:text-slate-950 " + (cat.isSale ? "text-[#b91c1c] font-medium" : "text-slate-800")
+                    }"
+                    data-cat="${cat.slug}"
+                  >
+                    ${escapeHtml(cat.name)}
+                  </button>
+                `;
+              }).join("")}
+            </div>
+          </nav>
+        </header>
+      `;
+    }
+
+    // ==================== ВИТРИНА КАТАЛОГА (image.png и image_2.png) ====================
+    function renderCatalogView() {
+      const catMeta = CATEGORIES.find((c) => c.slug === state.activeCat) || CATEGORIES[2];
+      const filtered = getFilteredProducts();
+      const pageSize = 4;
+      const realTotalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+      const curPage = Math.min(realTotalPages, Math.max(1, state.activePage));
+
+      let visibleProducts = [];
+      let startIdxDisplay = 1;
+      let endIdxDisplay = filtered.length;
+
+      if (state.showAllPages) {
+        const limit = Math.min(filtered.length, Math.max(8, state.showMoreCount));
+        visibleProducts = filtered.slice(0, limit);
+        startIdxDisplay = filtered.length ? 1 : 0;
+        endIdxDisplay = visibleProducts.length;
+      } else {
+        const startOffset = (curPage - 1) * pageSize;
+        visibleProducts = filtered.slice(startOffset, startOffset + pageSize);
+        startIdxDisplay = filtered.length ? startOffset + 1 : 0;
+        endIdxDisplay = startOffset + visibleProducts.length;
+      }
+
+      const totalCatalogCount = catMeta.count;
+      const displayTotalPages = state.activeCat === "women" ? 54 : 36;
+      const pageList = Array.from({ length: realTotalPages }, (_, i) => i + 1);
+
+      return `
+        <main class="max-w-[1280px] mx-auto px-4 sm:px-6 pb-16">
+          <!-- Герой-баннер ОСЕННЯЯ КОЛЛЕКЦИЯ '26 -->
+          <section class="mt-2.5 rounded-sm overflow-hidden grid grid-cols-1 md:grid-cols-12 bg-[#dde1e4] border border-slate-200/80">
+            <div class="md:col-span-7 p-5 sm:p-7 lg:px-12 flex flex-col justify-center">
+              <h1 class="text-xl sm:text-2xl lg:text-[25px] font-medium tracking-tight text-slate-950 leading-snug">
+                <span class="font-semibold uppercase">ОСЕННЯЯ КОЛЛЕКЦИЯ '26</span> •<br />
+                Скидки до -40% на верхнюю одежду
+              </h1>
+              <div class="mt-4 flex flex-wrap items-center gap-3">
+                <button id="hero-scroll-catalog-btn" type="button" class="px-5 py-1.5 rounded border border-slate-800 text-slate-900 hover:bg-slate-900 hover:text-white text-xs sm:text-sm font-medium transition">
+                  Смотреть каталог
+                </button>
+                <button id="hero-switch-gender-btn" type="button" class="px-4 py-1.5 rounded bg-white/70 hover:bg-white text-slate-800 text-xs font-medium transition">
+                  ${state.activeCat === "men" ? "Перейти в Женскую коллекцию →" : "Перейти в Мужскую коллекцию →"}
+                </button>
+              </div>
+            </div>
+            <div class="md:col-span-5 h-44 sm:h-48 md:h-44 relative overflow-hidden bg-slate-300">
+              <img
+                src="${IMAGES.hero_banner || "assets/images/hero_banner.jpg"}"
+                alt="Осенняя коллекция '26 Стиль и Образ"
+                class="w-full h-full object-cover object-top"
+              />
+            </div>
+          </section>
+
+          <!-- Основная сетка: Левая колонка фильтров + Правая сетка карточек товаров -->
+          <div id="catalog-grid-anchor" class="mt-5 grid grid-cols-1 lg:grid-cols-12 gap-7">
+            <!-- ЛЕВАЯ КОЛОНКА ФИЛЬТРОВ -->
+            <aside class="lg:col-span-3 space-y-4">
+              <!-- Хлебные крошки -->
+              <div class="pb-3 border-b border-slate-200">
+                <div class="text-xs text-slate-500">
+                  Категория &gt; <span class="text-slate-700">${escapeHtml(catMeta.breadcrumb)}</span> &gt;
+                </div>
+                <div class="text-sm font-semibold text-slate-900 mt-0.5">Верхняя одежда</div>
+              </div>
+
+              <!-- Фильтр: Размер -->
+              <div class="pb-4 border-b border-slate-200">
+                <button id="toggle-size-acc" type="button" class="w-full flex items-center justify-between text-sm font-medium text-slate-900 mb-2.5">
+                  <span>Размер</span>
+                  <svg class="w-4 h-4 text-slate-600 transition-transform ${state.openSizeFilter ? "rotate-180" : ""}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </button>
+                ${state.openSizeFilter ? `
+                  <div class="grid grid-cols-6 gap-1.5">
+                    ${SIZES.map((sz) => {
+                      const active = state.selectedSizes.includes(sz);
+                      return `
+                        <button
+                          type="button"
+                          class="size-filter-btn h-8 rounded border text-xs font-medium transition ${
+                            active
+                              ? "border-slate-900 bg-slate-900 text-white"
+                              : "border-slate-300 bg-white text-slate-800 hover:border-slate-600"
+                          }"
+                          data-size="${sz}"
+                        >
+                          ${sz}
+                        </button>
+                      `;
+                    }).join("")}
+                  </div>
+                ` : ""}
+              </div>
+
+              <!-- Фильтр: Цвет (10 кружков как на макете) -->
+              <div class="pb-4 border-b border-slate-200">
+                <div class="flex items-center justify-between mb-2.5">
+                  <span class="text-sm font-medium text-slate-900">Цвет</span>
+                  ${state.selectedColorHex ? `<button id="clear-color-btn" type="button" class="text-[11px] text-slate-500 hover:text-slate-900 underline">Сбросить</button>` : ""}
+                </div>
+                <div class="grid grid-cols-7 gap-2">
+                  ${COLORS.map((col) => {
+                    const isSel = state.selectedColorHex === col.hex;
+                    return `
+                      <button
+                        type="button"
+                        title="${escapeAttr(col.name)}"
+                        class="color-filter-btn w-7 h-7 rounded-full border transition transform ${
+                          isSel ? "ring-2 ring-offset-2 ring-slate-900 scale-105" : "border-slate-300 hover:scale-105"
+                        }"
+                        style="background-color: ${col.hex};"
+                        data-color="${col.hex}"
+                      ></button>
+                    `;
+                  }).join("")}
+                </div>
+              </div>
+
+              <!-- Фильтр: Цена, ₸ -->
+              <div class="pb-4 border-b border-slate-200">
+                <div class="text-sm font-medium text-slate-900 mb-2.5">Цена, ₸</div>
+                <div class="relative flex items-center">
+                  <span class="w-3.5 h-3.5 rounded-full bg-slate-900 shrink-0 -mr-1 z-10"></span>
+                  <input
+                    id="price-range-slider"
+                    type="range"
+                    min="15000"
+                    max="150000"
+                    step="1000"
+                    value="${state.maxPrice}"
+                    class="price-slider"
+                  />
+                </div>
+                <div class="flex items-center justify-between text-xs text-slate-700 mt-2">
+                  <span>от 5 000</span>
+                  <span>${Number(state.maxPrice).toLocaleString("ru-RU")} ₸</span>
+                </div>
+              </div>
+
+              <!-- Аккордеон: Бренд -->
+              <div class="pb-3.5 border-b border-slate-200">
+                <button id="toggle-brand-acc" type="button" class="w-full flex items-center justify-between text-sm font-medium text-slate-900">
+                  <span>Бренд ${state.selectedBrands.length ? `(${state.selectedBrands.length})` : ""}</span>
+                  <svg class="w-4 h-4 text-slate-600 transition-transform ${state.openBrandFilter ? "rotate-180" : ""}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </button>
+                ${state.openBrandFilter ? `
+                  <div class="mt-3 space-y-2">
+                    ${BRANDS.map((br) => {
+                      const checked = state.selectedBrands.includes(br);
+                      return `
+                        <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                          <input type="checkbox" class="brand-chk-inp rounded border-slate-300 text-slate-900" value="${escapeAttr(br)}" ${checked ? "checked" : ""} />
+                          <span>${escapeHtml(br)}</span>
+                        </label>
+                      `;
+                    }).join("")}
+                  </div>
+                ` : ""}
+              </div>
+
+              <!-- Аккордеон: Сезон -->
+              <div class="pb-3.5 border-b border-slate-200">
+                <button id="toggle-season-acc" type="button" class="w-full flex items-center justify-between text-sm font-medium text-slate-900">
+                  <span>Сезон ${state.selectedSeasons.length ? `(${state.selectedSeasons.length})` : ""}</span>
+                  <svg class="w-4 h-4 text-slate-600 transition-transform ${state.openSeasonFilter ? "rotate-180" : ""}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </button>
+                ${state.openSeasonFilter ? `
+                  <div class="mt-3 space-y-2">
+                    ${SEASONS.map((sn) => {
+                      const checked = state.selectedSeasons.includes(sn);
+                      return `
+                        <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                          <input type="checkbox" class="season-chk-inp rounded border-slate-300 text-slate-900" value="${escapeAttr(sn)}" ${checked ? "checked" : ""} />
+                          <span>${escapeHtml(sn)}</span>
+                        </label>
+                      `;
+                    }).join("")}
+                  </div>
+                ` : ""}
+              </div>
+
+              ${(state.selectedSizes.length || state.selectedColorHex || state.maxPrice < 150000 || state.selectedBrands.length || state.selectedSeasons.length || state.search) ? `
+                <button id="reset-all-filters-btn" type="button" class="w-full py-2 rounded border border-slate-300 hover:border-slate-900 text-xs font-medium text-slate-700 hover:text-slate-950 transition">
+                  Сбросить все фильтры
+                </button>
+              ` : ""}
+            </aside>
+
+            <!-- ПРАВАЯ КОЛОНКА: ЗАГОЛОВОК, СОРТИРОВКА И КАРТОЧКИ ТОВАРОВ -->
+            <section class="lg:col-span-9">
+              <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <div class="flex items-baseline gap-2.5">
+                  <h2 class="text-xl sm:text-[22px] font-semibold text-slate-950">${escapeHtml(catMeta.title)}</h2>
+                  <span class="text-xs sm:text-sm text-slate-500">(${totalCatalogCount.toLocaleString("ru-RU")} товаров)</span>
+                </div>
+
+                <div class="flex items-center gap-2 text-xs sm:text-sm">
+                  <span class="text-slate-600">Сортировка:</span>
+                  <select id="sort-select" class="h-9 px-3 rounded border border-slate-300 bg-white text-slate-900 text-xs sm:text-sm focus:outline-none focus:border-slate-900">
+                    <option value="popular" ${state.sortBy === "popular" ? "selected" : ""}>По популярности</option>
+                    <option value="price_asc" ${state.sortBy === "price_asc" ? "selected" : ""}>По возрастанию цены</option>
+                    <option value="price_desc" ${state.sortBy === "price_desc" ? "selected" : ""}>По убыванию цены</option>
+                    <option value="discount" ${state.sortBy === "discount" ? "selected" : ""}>По скидке %</option>
+                    <option value="newest" ${state.sortBy === "newest" ? "selected" : ""}>Сначала новинки</option>
+                  </select>
+                </div>
+              </div>
+
+              ${visibleProducts.length === 0 ? `
+                <div class="p-12 rounded-xl border border-slate-200 text-center bg-slate-50">
+                  <div class="text-base font-semibold text-slate-900">По выбранным фильтрам ничего не найдено</div>
+                  <p class="text-xs text-slate-500 mt-1">Попробуйте сбросить фильтр размера, цвета или ценового диапазона.</p>
+                  <button id="empty-reset-btn" type="button" class="mt-4 px-4 py-2 rounded bg-slate-900 text-white text-xs font-medium">Показать все товары</button>
+                </div>
+              ` : `
+                <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                  ${visibleProducts.map((p, idx) => renderProductCard(p, idx)).join("")}
+                </div>
+              `}
+
+              <!-- Нижняя пагинация и перелистывание списка (← Назад | 1 2 3 ... | Вперед → | Показать еще +4) -->
+              <div class="mt-5 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-4 text-xs sm:text-sm text-slate-700">
+                <div>
+                  Показано <span class="font-semibold text-slate-950">${startIdxDisplay}–${endIdxDisplay}</span> из <span class="font-semibold text-slate-950">${filtered.length}</span> моделей <span class="text-slate-400">(в разделе ${totalCatalogCount})</span>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-3">
+                  <!-- Кнопка Назад -->
+                  <button
+                    id="page-prev-btn"
+                    type="button"
+                    ${(!state.showAllPages && curPage <= 1) ? "disabled" : ""}
+                    class="px-2.5 py-1 rounded border border-slate-300 hover:border-slate-900 disabled:opacity-40 disabled:pointer-events-none text-xs font-medium transition"
+                  >
+                    ← Назад
+                  </button>
+
+                  <!-- Номера страниц -->
+                  <div class="flex items-center gap-2">
+                    ${pageList.map((pg) => `
+                      <button
+                        type="button"
+                        class="page-num-btn px-2 py-0.5 rounded transition ${
+                          (!state.showAllPages && curPage === pg)
+                            ? "font-bold text-slate-950 border-b-2 border-slate-900 bg-slate-100"
+                            : "text-slate-600 hover:text-slate-950 hover:bg-slate-50"
+                        }"
+                        data-page="${pg}"
+                      >${pg}</button>
+                    `).join("")}
+                    <span class="text-slate-400">...</span>
+                    <button type="button" class="page-num-btn px-1.5 py-0.5 text-slate-600 hover:text-slate-950" data-page="${realTotalPages}">${displayTotalPages}</button>
+                  </div>
+
+                  <!-- Кнопка Вперед -->
+                  <button
+                    id="page-next-btn"
+                    type="button"
+                    ${(!state.showAllPages && curPage >= realTotalPages) ? "disabled" : ""}
+                    class="px-2.5 py-1 rounded border border-slate-300 hover:border-slate-900 disabled:opacity-40 disabled:pointer-events-none text-xs font-medium transition"
+                  >
+                    Вперед →
+                  </button>
+
+                  <!-- Кнопка Показать еще (+4 товара) / Свернуть список -->
+                  <button
+                    id="show-more-products-btn"
+                    type="button"
+                    class="px-4 py-1.5 rounded border border-slate-800 text-slate-900 hover:bg-slate-900 hover:text-white text-xs sm:text-sm font-medium transition"
+                  >
+                    ${(state.showAllPages && visibleProducts.length >= filtered.length)
+                      ? "Свернуть список"
+                      : `Показать еще (+4)`}
+                  </button>
+                </div>
+              </div>
+            </section>
+          </div>
+        </main>
+      `;
+    }
+
+    function renderProductCard(p, idx) {
+      const isFav = state.favorites.includes(p.id);
+      const isSaleBadge = p.badge && p.badge.toUpperCase().includes("SALE");
+      const isNewBadge = p.badge && p.badge.toUpperCase().includes("NEW");
+      const isFirstCard = idx === 0;
+
+      return `
+        <article class="bg-white rounded-xl border border-slate-200/90 shadow-sm hover:shadow-md transition flex flex-col overflow-hidden group">
+          <!-- Фотография товара (из Supabase Storage или локального кэша) -->
+          <div class="relative aspect-[3/3.15] bg-[#e9ecef] overflow-hidden cursor-pointer quick-view-trigger" data-id="${escapeAttr(p.id)}">
+            <img
+              src="${escapeAttr(p.image)}"
+              alt="${escapeAttr(p.name)}"
+              class="w-full h-full object-cover object-top group-hover:scale-105 transition duration-500"
+            />
+            <!-- Иконка Избранное в правом верхнем углу -->
+            <button
+              type="button"
+              aria-label="В избранное"
+              class="fav-toggle-btn absolute top-3 right-3 w-8 h-8 rounded-full bg-white/80 hover:bg-white grid place-items-center text-slate-800 shadow-sm transition"
+              data-fav="${escapeAttr(p.id)}"
+            >
+              <svg class="w-4 h-4 ${isFav ? "fill-rose-500 text-rose-500" : ""}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9">
+                <path d="M12 20.5s-7.5-4.35-9.5-8.5C1.1 8.9 3.2 5 6.8 5c2.1 0 3.9 1.2 5.2 2.9C13.3 6.2 15.1 5 17.2 5c3.6 0 5.7 3.9 4.3 7-2 4.15-9.5 8.5-9.5 8.5z"></path>
+              </svg>
+            </button>
+
+            <!-- Бейдж SALE -30% или NEW в левом нижнем углу -->
+            ${p.badge ? `
+              <span class="absolute bottom-2.5 left-2.5 px-2.5 py-0.5 rounded text-[11px] font-bold tracking-tight ${
+                isSaleBadge
+                  ? "bg-[#f8d7da] text-[#9b1c1c]"
+                  : isNewBadge
+                  ? "bg-[#d1fae5] text-[#065f46]"
+                  : "bg-slate-900 text-white"
+              }">
+                ${escapeHtml(p.badge)}
+              </span>
+            ` : ""}
+          </div>
+
+          <!-- Информация о товаре -->
+          <div class="p-3.5 flex-1 flex flex-col justify-between">
+            <div class="cursor-pointer quick-view-trigger" data-id="${escapeAttr(p.id)}">
+              <div class="text-xs text-slate-500">${escapeHtml(p.brand)}</div>
+              <h3 class="text-[13px] font-medium text-slate-900 leading-snug mt-0.5 line-clamp-2 min-h-[34px]">
+                ${escapeHtml(p.name)}
+              </h3>
+              <div class="text-xs text-slate-600 mt-1">${Array.isArray(p.sizes) ? p.sizes.join(", ") : "S, M, L, XL"}</div>
+
+              <!-- Цена в тенге ₸ -->
+              <div class="mt-2 flex items-baseline gap-2">
+                <span class="text-[15px] font-bold ${p.old_price ? "text-[#9b1c1c]" : "text-slate-950"}">
+                  ${fmt(p.base_price)}
+                </span>
+                ${p.old_price ? `
+                  <span class="text-xs text-slate-400 line-through">${fmt(p.old_price)}</span>
+                ` : ""}
+              </div>
+            </div>
+
+            <!-- Кнопка В корзину (1-я карточка с иконкой сумки и сердечком рядом, остальные — В корзину) -->
+            <div class="mt-3 flex items-center gap-2">
+              <button
+                type="button"
+                class="add-to-cart-btn flex-1 h-9 px-3 rounded border border-slate-700 hover:bg-slate-900 hover:text-white text-slate-900 text-xs font-medium inline-flex items-center justify-center gap-1.5 transition"
+                data-add="${escapeAttr(p.id)}"
+              >
+                ${isFirstCard ? `
+                  <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M6 7h12l1 13H5L6 7z"></path>
+                    <path d="M9 7V5a3 3 0 0 1 6 0v2"></path>
+                    <line x1="12" y1="11" x2="12" y2="16"></line>
+                    <line x1="9.5" y1="13.5" x2="14.5" y2="13.5"></line>
+                  </svg>
+                  <span>Добавить в корзину</span>
+                ` : `
+                  <span>В корзину</span>
+                `}
+              </button>
+              ${isFirstCard ? `
+                <button
+                  type="button"
+                  aria-label="В избранное"
+                  class="fav-toggle-btn w-8 h-9 grid place-items-center text-slate-700 hover:text-rose-600 transition"
+                  data-fav="${escapeAttr(p.id)}"
+                >
+                  <svg class="w-4 h-4 ${isFav ? "fill-rose-500 text-rose-500" : ""}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <path d="M12 20.5s-7.5-4.35-9.5-8.5C1.1 8.9 3.2 5 6.8 5c2.1 0 3.9 1.2 5.2 2.9C13.3 6.2 15.1 5 17.2 5c3.6 0 5.7 3.9 4.3 7-2 4.15-9.5 8.5-9.5 8.5z"></path>
+                  </svg>
+                </button>
+              ` : ""}
+            </div>
+          </div>
+        </article>
+      `;
+    }
+
+    // ==================== СТРАНИЦА КОРЗИНЫ (100% по макету image_3.png) ====================
+    function renderCartView() {
+      const { totalQty, itemsSubtotal, actionDiscount, promoDiscount, deliveryCost, finalTotal } = computeCartTotals();
+
+      return `
+        <main class="max-w-[1280px] mx-auto px-4 sm:px-6 py-6 pb-20">
+          <!-- Хлебные крошки Главная > Корзина -->
+          <div class="text-xs text-slate-600 mb-4">
+            <button id="cart-back-home-crumb" type="button" class="hover:text-slate-950">Главная</button>
+            <span class="mx-1.5">&gt;</span>
+            <span class="text-slate-800">Корзина</span>
+          </div>
+
+          <!-- Заголовок Ваша корзина 3 товара -->
+          <div class="flex items-baseline gap-3 mb-6">
+            <h1 class="text-2xl sm:text-[28px] font-semibold text-slate-950">Ваша корзина</h1>
+            <span class="text-sm text-slate-500">${totalQty} ${pluralizeItems(totalQty)}</span>
+          </div>
+
+          ${state.cart.length === 0 ? `
+            <div class="p-12 rounded-xl border border-slate-200 text-center bg-slate-50">
+              <div class="text-lg font-semibold text-slate-900">Ваша корзина пока пуста</div>
+              <p class="text-xs text-slate-500 mt-1">Перейдите в каталог мужской или женской верхней одежды и выберите понравившиеся модели.</p>
+              <div class="mt-5 flex justify-center gap-3">
+                <button id="empty-cart-go-catalog" type="button" class="px-5 py-2.5 rounded bg-slate-900 text-white text-xs font-semibold">Перейти в каталог</button>
+                <button id="restore-demo-cart-btn" type="button" class="px-5 py-2.5 rounded border border-slate-300 bg-white text-slate-800 text-xs font-semibold">Вернуть 3 товара из макета</button>
+              </div>
+            </div>
+          ` : `
+            <!-- 3 колонки как на макете image_3.png: Слева lookbook-фото, по центру список товаров, справа Детали заказа -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-7 items-start">
+              <!-- Левая колонка: Lookbook-образы (2 вертикальных фото как на image_3.png) -->
+              <div class="hidden lg:flex lg:col-span-3 flex-col gap-4">
+                <div class="rounded-xl overflow-hidden bg-[#ececec] aspect-[3/3.5]">
+                  <img src="${IMAGES.women_bomber || "assets/images/women_bomber.jpg"}" alt="Образ 1" class="w-full h-full object-cover object-top" />
+                </div>
+                <div class="rounded-xl overflow-hidden bg-[#ececec] aspect-[3/2.7]">
+                  <img src="${IMAGES.lookbook_shearling || IMAGES.men_leather}" alt="Образ 2" class="w-full h-full object-cover object-top" />
+                </div>
+              </div>
+
+              <!-- Центральная колонка: Список товаров в корзине + Продолжить покупки + Промокод -->
+              <div class="lg:col-span-6">
+                <div class="divide-y divide-slate-200 border-b border-slate-200">
+                  ${state.cart.map((item, idx) => `
+                    <div class="py-4 first:pt-0 flex gap-4 items-start justify-between">
+                      <div class="flex gap-4">
+                        <img
+                          src="${escapeAttr(item.image)}"
+                          alt="${escapeAttr(item.name)}"
+                          class="w-20 sm:w-24 h-28 sm:h-32 rounded-lg object-cover object-top bg-slate-100 shrink-0 border border-slate-200/70"
+                        />
+                        <div>
+                          <h3 class="text-sm sm:text-[15px] font-semibold text-slate-950 leading-snug max-w-[260px]">
+                            ${escapeHtml(item.name)}
+                          </h3>
+                          <div class="text-xs text-slate-600 mt-1">
+                            Размер: ${escapeHtml(item.size)}, ${escapeHtml(item.color)}
+                          </div>
+                          <div class="text-xs text-slate-500 mt-0.5">
+                            Артикул: ${escapeHtml(item.sku || "WO-8472")}
+                          </div>
+
+                          <!-- Переключатель количества - 1 + -->
+                          <div class="mt-3 inline-flex items-center h-8 rounded border border-slate-300 bg-white">
+                            <button type="button" class="cart-dec-btn w-8 h-full text-slate-600 hover:text-slate-950 font-medium" data-idx="${idx}">−</button>
+                            <span class="w-7 text-center text-xs font-semibold text-slate-900">${item.qty}</span>
+                            <button type="button" class="cart-inc-btn w-8 h-full text-slate-600 hover:text-slate-950 font-medium" data-idx="${idx}">+</button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Бренд, Цена и ссылки Удалить / В избранное -->
+                      <div class="flex flex-col items-end justify-between self-stretch min-w-[140px]">
+                        <div class="w-full flex items-baseline justify-between gap-3">
+                          <span class="text-xs sm:text-sm text-slate-700">${escapeHtml(item.brand)}</span>
+                          <div class="text-right">
+                            <div class="text-sm sm:text-base font-bold text-slate-950">${fmt(item.price * item.qty)}</div>
+                            ${item.old_price ? `<div class="text-xs text-slate-400 line-through">${fmt(item.old_price * item.qty)}</div>` : ""}
+                          </div>
+                        </div>
+
+                        <div class="flex items-center gap-3 text-xs text-slate-700 mt-4">
+                          <button type="button" class="cart-remove-btn inline-flex items-center gap-1 hover:text-rose-600 transition" data-idx="${idx}">
+                            <span>✕</span>
+                            <span>Удалить</span>
+                          </button>
+                          <button type="button" class="cart-to-fav-btn inline-flex items-center gap-1 hover:text-slate-950 transition" data-id="${escapeAttr(item.id)}">
+                            <span>♡</span>
+                            <span>В избранное</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  `).join("")}
+                </div>
+
+                <!-- Нижняя панель корзины: Продолжить покупки + Промокод + Применить -->
+                <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
+                  <button
+                    id="continue-shopping-btn"
+                    type="button"
+                    class="h-10 px-5 rounded-md border border-slate-700 text-slate-900 hover:bg-slate-900 hover:text-white text-xs sm:text-sm font-medium transition"
+                  >
+                    Продолжить покупки
+                  </button>
+
+                  <form id="apply-promo-form" class="flex items-center gap-2 flex-1 max-w-[340px]">
+                    <input
+                      id="cart-promo-input"
+                      type="text"
+                      value="${escapeAttr(state.promoInput)}"
+                      placeholder="Промокод (напр. STYLE15)"
+                      class="flex-1 h-10 px-3.5 rounded-md border border-slate-300 text-xs sm:text-sm focus:outline-none focus:border-slate-900"
+                    />
+                    <button
+                      type="submit"
+                      class="h-10 px-5 rounded-md bg-slate-950 hover:bg-slate-800 text-white text-xs sm:text-sm font-medium transition"
+                    >
+                      Применить
+                    </button>
+                  </form>
+                </div>
+                ${state.promoMessage ? `
+                  <div class="mt-2 text-xs font-medium ${state.appliedPromo ? "text-emerald-700" : "text-rose-600"}">
+                    ${escapeHtml(state.promoMessage)}
+                  </div>
+                ` : ""}
+              </div>
+
+              <!-- Правая колонка: Карточка Детали заказа (точно как на макете image_3.png) -->
+              <aside class="lg:col-span-3 bg-[#f2f3f5] rounded-xl p-5 sm:p-6 border border-slate-200/80">
+                <h2 class="text-base sm:text-lg font-semibold text-slate-950 mb-4">Детали заказа</h2>
+
+                <div class="space-y-2.5 text-xs sm:text-sm">
+                  <div class="flex items-center justify-between text-slate-800">
+                    <span>Товары (${totalQty} шт.)</span>
+                    <span class="font-medium">${fmt(itemsSubtotal)}</span>
+                  </div>
+
+                  <div class="flex items-center justify-between text-slate-800">
+                    <span>Скидка по акции</span>
+                    <span class="font-medium text-[#b91c1c]">-${fmt(actionDiscount)}</span>
+                  </div>
+
+                  ${promoDiscount > 0 ? `
+                    <div class="flex items-center justify-between text-slate-800">
+                      <span>Промокод (${escapeHtml(state.appliedPromo.code)})</span>
+                      <span class="font-medium text-[#b91c1c]">-${fmt(promoDiscount)}</span>
+                    </div>
+                  ` : ""}
+
+                  <div class="flex items-center justify-between text-slate-800">
+                    <span>Доставка</span>
+                    <span class="font-medium text-[#15803d]">${deliveryCost === 0 ? "Бесплатно" : fmt(deliveryCost)}</span>
+                  </div>
+                </div>
+
+                <div class="my-4 border-t border-slate-300"></div>
+
+                <div class="flex items-baseline justify-between mb-5">
+                  <span class="text-sm font-semibold text-slate-950">Итого к оплате</span>
+                  <span class="text-xl sm:text-[22px] font-bold text-slate-950">${fmt(finalTotal)}</span>
+                </div>
+
+                <div class="space-y-2.5">
+                  <button
+                    id="proceed-checkout-btn"
+                    type="button"
+                    class="w-full h-11 rounded-md bg-slate-950 hover:bg-slate-800 text-white text-xs font-bold uppercase tracking-wider ring-2 ring-[#1d7dfa] transition"
+                  >
+                    ПЕРЕЙТИ К ОФОРМЛЕНИЮ
+                  </button>
+
+                  <button
+                    id="quick-1click-btn"
+                    type="button"
+                    class="w-full h-10 rounded-md border border-slate-600 bg-white hover:bg-slate-100 text-slate-900 text-xs sm:text-sm font-medium transition"
+                  >
+                    Быстрый заказ в 1 клик
+                  </button>
+                </div>
+
+                <p class="mt-4 text-[11px] text-slate-600 leading-relaxed">
+                  Доступна оплата картой, Kaspi, Apple Pay или при получении. Бесплатная доставка при заказе от 20 000 ₸
+                </p>
+              </aside>
+            </div>
+          `}
+        </main>
+      `;
+    }
+
+    // ==================== ИЗБРАННОЕ И МОИ ЗАКАЗЫ ====================
+    function renderFavoritesView() {
+      const favProducts = state.products.filter((p) => state.favorites.includes(p.id));
+      return `
+        <main class="max-w-[1280px] mx-auto px-4 sm:px-6 py-6 pb-20">
+          <div class="flex items-center justify-between mb-6">
+            <div>
+              <div class="text-xs text-slate-500">Главная &gt; Избранное</div>
+              <h1 class="text-2xl font-semibold text-slate-950 mt-1">Избранные товары (${favProducts.length})</h1>
+            </div>
+            <button id="fav-back-catalog-btn" type="button" class="px-4 py-2 rounded border border-slate-800 text-xs font-medium">← Вернуться в каталог</button>
+          </div>
+          ${favProducts.length === 0 ? `
+            <div class="p-10 rounded-xl border border-slate-200 text-center bg-slate-50 text-sm text-slate-600">
+              В избранном пока нет товаров. Нажмите на сердечко ♡ на карточке любого пальто, куртки или парки.
+            </div>
+          ` : `
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              ${favProducts.map((p, idx) => renderProductCard(p, idx)).join("")}
+            </div>
+          `}
+        </main>
+      `;
+    }
+
+    // ==================== МОДАЛЬНЫЕ ОКНА ====================
+    function renderQuickViewModal() {
+      const p = state.quickViewProd;
+      if (!p) return "";
+      const sizes = Array.isArray(p.sizes) ? p.sizes : ["S", "M", "L", "XL"];
+      const colors = Array.isArray(p.colors) && p.colors.length ? p.colors : [{ name: "Классический", hex: "#192d4b" }];
+
+      return `
+        <div class="fixed inset-0 z-50 bg-black/55 backdrop-blur-xs flex items-center justify-center p-4">
+          <div class="bg-white rounded-2xl max-w-3xl w-full overflow-hidden shadow-2xl border border-slate-200 grid grid-cols-1 md:grid-cols-12">
+            <div class="md:col-span-5 bg-slate-100 aspect-[3/4] md:aspect-auto">
+              <img src="${escapeAttr(p.image)}" alt="${escapeAttr(p.name)}" class="w-full h-full object-cover object-top" />
+            </div>
+            <div class="md:col-span-7 p-6 flex flex-col justify-between">
+              <div>
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">${escapeHtml(p.brand)} • Артикул: ${escapeHtml(p.sku)}</span>
+                  <button id="close-quickview-btn" type="button" class="w-8 h-8 rounded-full hover:bg-slate-100 text-slate-600 font-bold">✕</button>
+                </div>
+                <h2 class="text-xl font-bold text-slate-950 mt-1">${escapeHtml(p.name)}</h2>
+                <div class="mt-2 flex items-baseline gap-3">
+                  <span class="text-2xl font-bold ${p.old_price ? "text-[#9b1c1c]" : "text-slate-950"}">${fmt(p.base_price)}</span>
+                  ${p.old_price ? `<span class="text-sm text-slate-400 line-through">${fmt(p.old_price)}</span>` : ""}
+                  <span class="text-xs px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-medium">В наличии (${p.stock_qty || 25} шт.)</span>
+                </div>
+                <p class="text-xs text-slate-600 leading-relaxed mt-3">${escapeHtml(p.description)}</p>
+
+                <!-- Выбор размера -->
+                <div class="mt-4">
+                  <div class="text-xs font-semibold text-slate-900 mb-2">Выберите размер:</div>
+                  <div class="flex flex-wrap gap-2">
+                    ${sizes.map((sz) => `
+                      <button
+                        type="button"
+                        class="qv-size-btn px-3.5 py-1.5 rounded border text-xs font-semibold transition ${
+                          state.quickViewSize === sz
+                            ? "border-slate-950 bg-slate-950 text-white"
+                            : "border-slate-300 bg-white text-slate-800 hover:border-slate-700"
+                        }"
+                        data-qvsize="${sz}"
+                      >${sz}</button>
+                    `).join("")}
+                  </div>
+                </div>
+
+                <!-- Выбор цвета -->
+                <div class="mt-4">
+                  <div class="text-xs font-semibold text-slate-900 mb-2">Цвет: <span class="font-normal text-slate-600">${escapeHtml(state.quickViewColor || colors[0].name)}</span></div>
+                  <div class="flex items-center gap-2.5">
+                    ${colors.map((c) => `
+                      <button
+                        type="button"
+                        class="qv-color-btn w-7 h-7 rounded-full border ${
+                          (state.quickViewColor || colors[0].name) === c.name ? "ring-2 ring-offset-2 ring-slate-900" : "border-slate-300"
+                        }"
+                        style="background-color: ${c.hex};"
+                        data-qvcolor="${escapeAttr(c.name)}"
+                      ></button>
+                    `).join("")}
+                  </div>
+                </div>
+              </div>
+
+              <div class="mt-6 pt-4 border-t border-slate-200 flex items-center gap-3">
+                <button id="qv-add-cart-btn" type="button" class="flex-1 h-11 rounded-lg bg-slate-950 hover:bg-slate-800 text-white text-xs font-bold uppercase tracking-wider">
+                  Добавить в корзину — ${fmt(p.base_price)}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderCheckoutModal() {
+      if (!state.checkoutModalOpen && !state.oneClickModalOpen) return "";
+      const { totalQty, finalTotal } = computeCartTotals();
+      const isOneClick = state.oneClickModalOpen;
+
+      return `
+        <div class="fixed inset-0 z-50 bg-black/55 backdrop-blur-xs flex items-center justify-center p-4">
+          <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-200">
+              <div>
+                <h2 class="text-lg font-bold text-slate-950">${isOneClick ? "Быстрый заказ в 1 клик" : "Оформление заказа «Стиль & Образ»"}</h2>
+                <p class="text-xs text-slate-500">${totalQty} шт. • К оплате: <b>${fmt(finalTotal)}</b></p>
+              </div>
+              <button id="close-checkout-modal-btn" type="button" class="w-8 h-8 rounded-full hover:bg-slate-100 text-slate-500 font-bold">✕</button>
+            </div>
+
+            <form id="submit-order-form" class="mt-4 space-y-3.5">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 mb-1">Ваше имя и фамилия</label>
+                  <input id="co-name" type="text" value="${escapeAttr(state.customerName)}" required class="w-full h-10 px-3 rounded-lg border border-slate-300 text-xs focus:outline-none focus:border-slate-900" />
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 mb-1">Телефон (Kaspi / SMS)</label>
+                  <input id="co-phone" type="text" value="${escapeAttr(state.customerPhone)}" required class="w-full h-10 px-3 rounded-lg border border-slate-300 text-xs focus:outline-none focus:border-slate-900" />
+                </div>
+              </div>
+
+              ${!isOneClick ? `
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Город</label>
+                    <input id="co-city" type="text" value="${escapeAttr(state.customerCity)}" class="w-full h-10 px-3 rounded-lg border border-slate-300 text-xs focus:outline-none focus:border-slate-900" />
+                  </div>
+                  <div class="sm:col-span-2">
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Адрес доставки или ПВЗ</label>
+                    <input id="co-address" type="text" value="${escapeAttr(state.customerAddress)}" required class="w-full h-10 px-3 rounded-lg border border-slate-300 text-xs focus:outline-none focus:border-slate-900" />
+                  </div>
+                </div>
+
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 mb-1.5">Способ оплаты</label>
+                  <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    ${[
+                      { id: "kaspi", label: "Kaspi QR / Red" },
+                      { id: "card", label: "Банк. карта" },
+                      { id: "apple_pay", label: "Apple Pay" },
+                      { id: "cod", label: "При получении" }
+                    ].map((pm) => `
+                      <button
+                        type="button"
+                        class="pay-method-btn py-2 px-2.5 rounded-lg border text-xs font-semibold transition ${
+                          state.paymentMethod === pm.id
+                            ? "border-slate-950 bg-slate-950 text-white"
+                            : "border-slate-300 bg-white text-slate-800 hover:border-slate-700"
+                        }"
+                        data-pm="${pm.id}"
+                      >${pm.label}</button>
+                    `).join("")}
+                  </div>
+                </div>
+              ` : ""}
+
+              <div class="pt-3 border-t border-slate-200 flex items-center justify-end gap-2.5">
+                <button id="cancel-checkout-btn" type="button" class="px-4 py-2.5 rounded-lg border border-slate-300 text-xs font-semibold text-slate-700">Отмена</button>
+                <button type="submit" class="px-6 py-2.5 rounded-lg bg-slate-950 hover:bg-slate-800 text-white text-xs font-bold uppercase tracking-wider">
+                  Подтвердить заказ (${fmt(finalTotal)})
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      `;
+    }
+
+    // Модальное окно для вставки ключей нового проекта Supabase и выгрузки фото в Supabase Storage
+    function renderSupabaseKeysModal() {
+      if (!state.sbModalOpen) return "";
+      return `
+        <div class="fixed inset-0 z-50 bg-black/55 backdrop-blur-xs flex items-center justify-center p-4">
+          <div class="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-slate-200">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-200">
+              <div>
+                <h2 class="text-lg font-bold text-slate-950">🔑 Подключение вашего нового проекта Supabase &amp; Storage</h2>
+                <p class="text-xs text-slate-500 mt-0.5">Вставьте ключи нового проекта Supabase или пропишите их в <code>shared-data.js</code></p>
+              </div>
+              <button id="close-sb-modal-btn" type="button" class="w-8 h-8 rounded-full hover:bg-slate-100 text-slate-600 font-bold">✕</button>
+            </div>
+
+            <div class="mt-4 space-y-3">
+              <div>
+                <label class="block text-xs font-semibold text-slate-800 mb-1">Supabase Project URL</label>
+                <input id="sb-modal-url" type="text" value="${escapeAttr(state.sbUrl)}" placeholder="https://ваш-новый-проект.supabase.co" class="w-full h-10 px-3 rounded-lg border border-slate-300 text-xs font-mono focus:outline-none focus:border-slate-900" />
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-800 mb-1">Supabase Anon / Publishable API Key</label>
+                <input id="sb-modal-key" type="text" value="${escapeAttr(state.sbKey)}" placeholder="eyJhbGciOiJIUzI1NiIs... или sb_publishable_..." class="w-full h-10 px-3 rounded-lg border border-slate-300 text-xs font-mono focus:outline-none focus:border-slate-900" />
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-800 mb-1">Supabase Storage Bucket (для фото)</label>
+                  <input id="sb-modal-bucket" type="text" value="${escapeAttr(state.sbBucket)}" placeholder="product-images" class="w-full h-10 px-3 rounded-lg border border-slate-300 text-xs font-mono focus:outline-none focus:border-slate-900" />
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-800 mb-1">Edge Function ИИ</label>
+                  <input id="sb-modal-aifn" type="text" value="${escapeAttr(state.aiFn)}" placeholder="style-ai" class="w-full h-10 px-3 rounded-lg border border-slate-300 text-xs font-mono focus:outline-none focus:border-slate-900" />
+                </div>
+              </div>
+
+              <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 text-[11.5px] text-slate-700 leading-relaxed">
+                <b>Как развернуть новый проект Supabase за 1 минуту:</b><br>
+                1. Выполните SQL-скрипт из файла <code>supabase/schema.sql</code> в <b>Supabase SQL Editor</b> (он создаст все таблицы и публичный бакет <code>product-images</code> в <b>Supabase Storage</b>).<br>
+                2. Вставьте <b>Project URL</b> и <b>API Key</b> выше (или в начало файла <code>shared-data.js</code>).<br>
+                3. Нажмите <b>«Сохранить и выгрузить каталог + фото в Supabase Storage»</b>.
+              </div>
+
+              ${state.sbStatusMsg ? `
+                <div class="p-2.5 rounded-lg bg-blue-50 border border-blue-200 text-xs text-blue-900 font-medium">
+                  ${escapeHtml(state.sbStatusMsg)}
+                </div>
+              ` : ""}
+
+              <div class="pt-3 border-t border-slate-200 flex flex-wrap items-center justify-end gap-2">
+                <button id="sb-save-only-btn" type="button" class="px-4 py-2.5 rounded-lg border border-slate-300 hover:border-slate-900 text-xs font-semibold text-slate-800">
+                  Сохранить ключи
+                </button>
+                <button id="sb-seed-storage-btn" type="button" ${state.sbSyncing ? "disabled" : ""} class="px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold">
+                  ${state.sbSyncing ? "Выгрузка в Supabase Storage..." : "☁️ Сохранить и выгрузить фото в Supabase Storage"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderAuthModal() {
+      if (!state.authModalOpen) return "";
+      return `
+        <div class="fixed inset-0 z-50 bg-black/55 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 relative my-8">
+            <button id="close-auth-modal-btn" type="button" class="absolute top-5 right-5 w-9 h-9 rounded-full hover:bg-slate-100 text-slate-500 font-bold">✕</button>
+            <span class="px-2.5 py-1 rounded-full bg-blue-100 text-[#1d68b8] text-[11px] font-bold">Личный кабинет покупателя • Supabase</span>
+            <h2 class="text-2xl font-extrabold text-slate-950 mt-2">
+              ${state.user ? "Профиль покупателя" : state.authMode === "register" ? "Регистрация клиента" : "Вход для клиента"}
+            </h2>
+            <p class="text-xs text-slate-500 mt-1">У каждого покупателя своя личная история заказов и бонусов в базе Supabase</p>
+
+            ${state.user ? `
+              <div class="mt-4 space-y-3.5">
+                <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                  <div class="font-bold text-sm text-slate-950">${escapeHtml(state.user.name)}</div>
+                  <div class="text-xs text-slate-500 mt-0.5">${escapeHtml(state.user.email)} • ${escapeHtml(state.user.phone)}</div>
+                  <div class="mt-2 inline-block px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold">Бонусный баланс: 2 500 ₸</div>
+                </div>
+
+                <div class="text-xs font-bold text-slate-800">История ваших заказов в Supabase (${state.orders.length}):</div>
+                <div class="max-h-56 overflow-y-auto space-y-2">
+                  ${state.orders.slice(0, 6).map((o) => `
+                    <div class="p-3 rounded-xl border border-slate-200 text-xs flex items-center justify-between">
+                      <div>
+                        <div class="font-bold text-slate-900">Заказ #${o.number}</div>
+                        <div class="text-slate-500">${(o.items || []).length} поз. • ${fmt(o.total)}</div>
+                      </div>
+                      <span class="px-2 py-0.5 rounded-full text-[11px] font-semibold ${STATUS_META[o.status]?.badge || "bg-slate-100"}">
+                        ${STATUS_META[o.status]?.label || o.status}
+                      </span>
+                    </div>
+                  `).join("")}
+                </div>
+
+                <button id="logout-user-btn" type="button" class="w-full py-2.5 rounded-xl border border-rose-300 text-rose-700 text-xs font-bold hover:bg-rose-50">
+                  Выйти из аккаунта
+                </button>
+              </div>
+            ` : `
+              <div class="grid grid-cols-2 bg-slate-100 p-1 rounded-2xl mt-4 text-xs font-bold">
+                <button type="button" data-amode="login" class="amode-btn py-2 rounded-xl transition ${state.authMode === "login" ? "bg-white shadow text-slate-950" : "text-slate-600"}">Вход</button>
+                <button type="button" data-amode="register" class="amode-btn py-2 rounded-xl transition ${state.authMode === "register" ? "bg-white shadow text-slate-950" : "text-slate-600"}">Регистрация клиента</button>
+              </div>
+
+              <form id="login-customer-form" class="mt-4 space-y-3">
+                ${state.authMode === "register" ? `
+                  <input id="auth-name" type="text" placeholder="Ваше имя и фамилия" value="Айгерим Сапарова" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-slate-900" />
+                  <input id="auth-phone" type="tel" placeholder="Телефон (+7 707 000-00-00)" value="+7 (701) 555-44-11" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-slate-900" />
+                ` : ""}
+                <input id="auth-email" type="email" placeholder="Email клиента" value="aigerim@mail.kz" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-slate-900" />
+                <input id="auth-pass" type="password" placeholder="Пароль" value="123456" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-slate-900" />
+                <button type="submit" class="w-full py-3 rounded-xl bg-[#1d68b8] hover:bg-blue-700 text-white font-bold text-sm shadow transition">
+                  ${state.authMode === "register" ? "Зарегистрироваться как клиент" : "Войти"}
+                </button>
+              </form>
+
+              <div class="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-xs">
+                <span class="text-slate-500">Быстрый тест:</span>
+                <button type="button" id="quick-client-login-btn" class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-blue-50 text-slate-900 font-bold transition">
+                  Войти демо-клиентом в 1 клик
+                </button>
+              </div>
+            `}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderInfoModal() {
+      if (!state.infoModal) return "";
+      const titles = {
+        delivery: "Доставка по всей стране и примерка",
+        stores: "Адреса магазинов «Стиль & Образ»",
+        support: "Служба поддержки покупателей"
+      };
+      const bodies = {
+        delivery: "Бесплатная курьерская доставка с примеркой по Алматы, Астане, Шымкенту и всем городам Казахстана при заказе от 20 000 ₸. Срок доставки: 1–2 рабочих дня.",
+        stores: "• г. Алматы, ТРЦ Mega Alma-Ata, 2 этаж, бутик «Стиль & Образ» (10:00–22:00)\n• г. Астана, ТРЦ Khan Shatyr, 1 этаж, галерея моды (10:00–22:00)\n• г. Семей, ул. Шакарима, 45, флагманский магазин (10:00–21:00)",
+        support: "Горячая линия: +7 (727) 355-88-99 (ежедневно 09:00–22:00). Возврат и обмен размера в течение 14 дней в любом магазине сети или через курьера."
+      };
+      return `
+        <div class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-200">
+              <h3 class="text-base font-bold text-slate-950">${titles[state.infoModal] || ""}</h3>
+              <button id="close-info-modal-btn" type="button" class="w-7 h-7 rounded-full hover:bg-slate-100 text-slate-500 font-bold">✕</button>
+            </div>
+            <p class="mt-4 text-xs text-slate-700 whitespace-pre-line leading-relaxed">${bodies[state.infoModal] || ""}</p>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderFooter() {
+      return `
+        <footer class="border-t border-slate-200 bg-[#f8f9fa] text-xs text-slate-600">
+          <div class="max-w-[1280px] mx-auto px-4 sm:px-6 py-8 flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <span class="brand-serif font-semibold text-base text-slate-900">Стиль &amp; Образ</span>
+              <span class="ml-2 text-slate-500">© 2026 Все права защищены. Цены указаны в тенге (₸).</span>
+            </div>
+            <div class="flex items-center gap-5">
+              <button type="button" id="footer-open-sb-btn" class="hover:text-slate-950 underline">🔑 Настройки Supabase &amp; Storage</button>
+              <a href="https://mrzeetses.github.io/shop-staff/" target="_blank" class="font-semibold text-slate-900 hover:text-blue-700">🏢 Открыть портал персонала (shop-staff) →</a>
+            </div>
+          </div>
+        </footer>
+      `;
+    }
+
+    function renderToast() {
+      if (!state.toast) return "";
+      return `
+        <div class="fixed bottom-16 left-1/2 -translate-x-1/2 z-50 bg-slate-950 text-white px-5 py-3 rounded-xl shadow-2xl text-xs sm:text-sm font-semibold border border-slate-700">
+          ${escapeHtml(state.toast)}
+        </div>
+      `;
+    }
+
+    function pluralizeItems(n) {
+      const mod10 = n % 10;
+      const mod100 = n % 100;
+      if (mod10 === 1 && mod100 !== 11) return "товар";
+      if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return "товара";
+      return "товаров";
+    }
+
+    function escapeHtml(str) {
+      return String(str ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+    }
+
+    function escapeAttr(str) {
+      return escapeHtml(str).replace(/"/g, "&quot;");
+    }
+
+    // ==================== ГЛАВНЫЙ РЕНДЕР ====================
+    function render() {
+      const root = document.getElementById("app");
+      let bodyHtml = "";
+      if (state.view === "cart") {
+        bodyHtml = renderCartView();
+      } else if (state.view === "favorites") {
+        bodyHtml = renderFavoritesView();
+      } else {
+        bodyHtml = renderCatalogView();
+      }
+
+      root.innerHTML =
+        renderHeader() +
+        bodyHtml +
+        renderFooter() +
+        renderQuickViewModal() +
+        renderCheckoutModal() +
+        renderSupabaseKeysModal() +
+        renderAuthModal() +
+        renderInfoModal() +
+        renderToast();
+
+      bindEvents();
+    }
+
+    // ==================== ОБРАБОТЧИКИ СОБЫТИЙ ====================
+    function bindEvents() {
+      const logoBtn = document.getElementById("logo-home-btn");
+      if (logoBtn) {
+        logoBtn.onclick = () => {
+          state.view = "catalog";
+          render();
+        };
+      }
+
+      const openCartBtn = document.getElementById("open-cart-btn");
+      if (openCartBtn) {
+        openCartBtn.onclick = () => {
+          state.view = state.view === "cart" ? "catalog" : "cart";
+          render();
+        };
+      }
+
+      const openFavBtn = document.getElementById("open-fav-btn");
+      if (openFavBtn) {
+        openFavBtn.onclick = () => {
+          state.view = state.view === "favorites" ? "catalog" : "favorites";
+          render();
+        };
+      }
+
+      const openAuthBtn = document.getElementById("open-auth-btn");
+      if (openAuthBtn) {
+        openAuthBtn.onclick = () => {
+          state.authModalOpen = true;
+          render();
+        };
+      }
+
+      const closeAuthBtn = document.getElementById("close-auth-modal-btn");
+      if (closeAuthBtn) closeAuthBtn.onclick = () => { state.authModalOpen = false; render(); };
+
+      document.querySelectorAll(".amode-btn").forEach((btn) => {
+        btn.onclick = () => {
+          state.authMode = btn.dataset.amode;
+          render();
+        };
+      });
+
+      const quickClientBtn = document.getElementById("quick-client-login-btn");
+      if (quickClientBtn) {
+        quickClientBtn.onclick = async () => {
+          const demoUser = {
+            name: "Айгерим Сапарова",
+            email: "aigerim@mail.kz",
+            phone: "+7 (701) 555-44-11"
+          };
+          state.user = demoUser;
+          state.customerName = demoUser.name;
+          state.customerEmail = demoUser.email;
+          state.customerPhone = demoUser.phone;
+          state.authModalOpen = false;
+          persistLocal();
+          const sb = getSbClient();
+          if (sb) {
+            try {
+              await sb.from("profiles").insert({
+                email: demoUser.email,
+                full_name: demoUser.name,
+                phone: demoUser.phone,
+                role: "customer",
+                bonus_balance: 2500
+              });
+            } catch (_) {}
+          }
+          notify("Вы вошли демо-клиентом: Айгерим Сапарова!");
+        };
+      }
+
+      const loginForm = document.getElementById("login-customer-form");
+      if (loginForm) {
+        loginForm.onsubmit = async (e) => {
+          e.preventDefault();
+          const email = document.getElementById("auth-email")?.value.trim() || "client@style-obraz.kz";
+          const name = document.getElementById("auth-name")?.value.trim() || email.split("@")[0];
+          const phone = document.getElementById("auth-phone")?.value.trim() || "+7 (701) 555-44-11";
+          state.user = { name, email, phone };
+          state.customerName = name;
+          state.customerEmail = email;
+          state.customerPhone = phone;
+          state.authModalOpen = false;
+          persistLocal();
+
+          const sb = getSbClient();
+          if (sb) {
+            try {
+              await sb.from("profiles").insert({
+                email,
+                full_name: name,
+                phone,
+                role: "customer",
+                bonus_balance: 2500
+              });
+            } catch (_) {}
+          }
+          notify(`Добро пожаловать, ${name}! Профиль синхронизирован с Supabase.`);
+        };
+      }
+
+      const logoutBtn = document.getElementById("logout-user-btn");
+      if (logoutBtn) {
+        logoutBtn.onclick = () => {
+          state.user = null;
+          state.authModalOpen = false;
+          persistLocal();
+          notify("Вы вышли из аккаунта");
+        };
+      }
+
+      // Навигация по категориям
+      document.querySelectorAll(".cat-tab-btn").forEach((btn) => {
+        btn.onclick = () => {
+          state.view = "catalog";
+          state.activeCat = btn.dataset.cat;
+          state.activePage = 1;
+          state.showAllPages = false;
+          state.showMoreCount = 4;
+          render();
+        };
+      });
+
+      // Поиск
+      const searchInp = document.getElementById("catalog-search-input");
+      if (searchInp) {
+        searchInp.oninput = (e) => {
+          state.search = e.target.value;
+          state.activePage = 1;
+          if (state.view !== "catalog") state.view = "catalog";
+          render();
+          const el = document.getElementById("catalog-search-input");
+          if (el) {
+            el.focus();
+            el.setSelectionRange(el.value.length, el.value.length);
+          }
+        };
+      }
+
+      // Герой-баннер
+      const heroScrollBtn = document.getElementById("hero-scroll-catalog-btn");
+      if (heroScrollBtn) {
+        heroScrollBtn.onclick = () => {
+          const anchor = document.getElementById("catalog-grid-anchor");
+          if (anchor) anchor.scrollIntoView({ behavior: "smooth" });
+        };
+      }
+
+      const heroSwitchBtn = document.getElementById("hero-switch-gender-btn");
+      if (heroSwitchBtn) {
+        heroSwitchBtn.onclick = () => {
+          state.activeCat = state.activeCat === "men" ? "women" : "men";
+          state.activePage = 1;
+          state.showAllPages = false;
+          state.showMoreCount = 4;
+          render();
+        };
+      }
+
+      // Фильтры размеров
+      const toggleSizeAcc = document.getElementById("toggle-size-acc");
+      if (toggleSizeAcc) toggleSizeAcc.onclick = () => { state.openSizeFilter = !state.openSizeFilter; render(); };
+
+      document.querySelectorAll(".size-filter-btn").forEach((btn) => {
+        btn.onclick = () => {
+          const sz = btn.dataset.size;
+          if (state.selectedSizes.includes(sz)) {
+            state.selectedSizes = state.selectedSizes.filter((x) => x !== sz);
+          } else {
+            state.selectedSizes.push(sz);
+          }
+          state.activePage = 1;
+          render();
+        };
+      });
+
+      // Фильтр цвета
+      document.querySelectorAll(".color-filter-btn").forEach((btn) => {
+        btn.onclick = () => {
+          const hex = btn.dataset.color;
+          state.selectedColorHex = state.selectedColorHex === hex ? "" : hex;
+          state.activePage = 1;
+          render();
+        };
+      });
+      const clearColorBtn = document.getElementById("clear-color-btn");
+      if (clearColorBtn) clearColorBtn.onclick = () => { state.selectedColorHex = ""; state.activePage = 1; render(); };
+
+      // Ползунок цены
+      const priceSlider = document.getElementById("price-range-slider");
+      if (priceSlider) {
+        priceSlider.oninput = (e) => {
+          state.maxPrice = Number(e.target.value) || 150000;
+          state.activePage = 1;
+          render();
+        };
+      }
+
+      // Аккордеоны Бренд и Сезон
+      const toggleBrandAcc = document.getElementById("toggle-brand-acc");
+      if (toggleBrandAcc) toggleBrandAcc.onclick = () => { state.openBrandFilter = !state.openBrandFilter; render(); };
+
+      document.querySelectorAll(".brand-chk-inp").forEach((inp) => {
+        inp.onchange = () => {
+          const val = inp.value;
+          if (inp.checked) state.selectedBrands.push(val);
+          else state.selectedBrands = state.selectedBrands.filter((x) => x !== val);
+          state.activePage = 1;
+          render();
+        };
+      });
+
+      const toggleSeasonAcc = document.getElementById("toggle-season-acc");
+      if (toggleSeasonAcc) toggleSeasonAcc.onclick = () => { state.openSeasonFilter = !state.openSeasonFilter; render(); };
+
+      document.querySelectorAll(".season-chk-inp").forEach((inp) => {
+        inp.onchange = () => {
+          const val = inp.value;
+          if (inp.checked) state.selectedSeasons.push(val);
+          else state.selectedSeasons = state.selectedSeasons.filter((x) => x !== val);
+          state.activePage = 1;
+          render();
+        };
+      });
+
+      const resetAllBtn = document.getElementById("reset-all-filters-btn");
+      const emptyResetBtn = document.getElementById("empty-reset-btn");
+      [resetAllBtn, emptyResetBtn].forEach((b) => {
+        if (b) {
+          b.onclick = () => {
+            state.selectedSizes = [];
+            state.selectedColorHex = "";
+            state.maxPrice = 150000;
+            state.selectedBrands = [];
+            state.selectedSeasons = [];
+            state.search = "";
+            state.activePage = 1;
+            state.showAllPages = false;
+            render();
+          };
+        }
+      });
+
+      // Сортировка
+      const sortSel = document.getElementById("sort-select");
+      if (sortSel) {
+        sortSel.onchange = (e) => {
+          state.sortBy = e.target.value;
+          state.activePage = 1;
+          render();
+        };
+      }
+
+      // Пагинация: ← Назад / 1 2 3 / Вперед → / Показать еще (+4)
+      const prevBtn = document.getElementById("page-prev-btn");
+      if (prevBtn) {
+        prevBtn.onclick = () => {
+          state.showAllPages = false;
+          state.activePage = Math.max(1, state.activePage - 1);
+          render();
+        };
+      }
+
+      const nextBtn = document.getElementById("page-next-btn");
+      if (nextBtn) {
+        nextBtn.onclick = () => {
+          const totalP = Math.max(1, Math.ceil(getFilteredProducts().length / 4));
+          state.showAllPages = false;
+          state.activePage = Math.min(totalP, state.activePage + 1);
+          render();
+        };
+      }
+
+      document.querySelectorAll(".page-num-btn").forEach((btn) => {
+        btn.onclick = () => {
+          const totalP = Math.max(1, Math.ceil(getFilteredProducts().length / 4));
+          const target = Math.min(totalP, Math.max(1, Number(btn.dataset.page) || 1));
+          state.showAllPages = false;
+          state.activePage = target;
+          render();
+        };
+      });
+
+      const showMoreBtn = document.getElementById("show-more-products-btn");
+      if (showMoreBtn) {
+        showMoreBtn.onclick = () => {
+          const totalLen = getFilteredProducts().length;
+          if (!state.showAllPages) {
+            state.showAllPages = true;
+            state.showMoreCount = Math.min(totalLen, 8);
+          } else if (state.showMoreCount < totalLen) {
+            state.showMoreCount = Math.min(totalLen, state.showMoreCount + 4);
+          } else {
+            state.showAllPages = false;
+            state.showMoreCount = 4;
+            state.activePage = 1;
+          }
+          render();
+        };
+      }
+
+      // Избранное
+      document.querySelectorAll(".fav-toggle-btn").forEach((btn) => {
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          const id = btn.dataset.fav;
+          if (state.favorites.includes(id)) {
+            state.favorites = state.favorites.filter((x) => x !== id);
+            notify("Удалено из избранного");
+          } else {
+            state.favorites.push(id);
+            notify("Добавлено в избранное ♡");
+          }
+          persistLocal();
+          render();
+        };
+      });
+
+      // Добавление в корзину
+      document.querySelectorAll(".add-to-cart-btn").forEach((btn) => {
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          const p = state.products.find((x) => x.id === btn.dataset.add);
+          if (!p) return;
+          addProductToCart(p, p.sizes?.[0] || "M", p.colors?.[0]?.name || "классический");
+        };
+      });
+
+      // Быстрый просмотр карточки товара
+      document.querySelectorAll(".quick-view-trigger").forEach((el) => {
+        el.onclick = () => {
+          const p = state.products.find((x) => x.id === el.dataset.id);
+          if (!p) return;
+          state.quickViewProd = p;
+          state.quickViewSize = p.sizes?.[0] || "M";
+          state.quickViewColor = p.colors?.[0]?.name || "Классический";
+          render();
+        };
+      });
+
+      const closeQvBtn = document.getElementById("close-quickview-btn");
+      if (closeQvBtn) closeQvBtn.onclick = () => { state.quickViewProd = null; render(); };
+
+      document.querySelectorAll(".qv-size-btn").forEach((b) => {
+        b.onclick = () => { state.quickViewSize = b.dataset.qvsize; render(); };
+      });
+      document.querySelectorAll(".qv-color-btn").forEach((b) => {
+        b.onclick = () => { state.quickViewColor = b.dataset.qvcolor; render(); };
+      });
+      const qvAddBtn = document.getElementById("qv-add-cart-btn");
+      if (qvAddBtn && state.quickViewProd) {
+        qvAddBtn.onclick = () => {
+          addProductToCart(state.quickViewProd, state.quickViewSize, state.quickViewColor);
+          state.quickViewProd = null;
+          render();
+        };
+      }
+
+      // События страницы Корзины
+      const backCrumb = document.getElementById("cart-back-home-crumb");
+      const contShopBtn = document.getElementById("continue-shopping-btn");
+      const emptyGoCat = document.getElementById("empty-cart-go-catalog");
+      const favBackBtn = document.getElementById("fav-back-catalog-btn");
+      [backCrumb, contShopBtn, emptyGoCat, favBackBtn].forEach((b) => {
+        if (b) b.onclick = () => { state.view = "catalog"; render(); };
+      });
+
+      const restoreDemoCartBtn = document.getElementById("restore-demo-cart-btn");
+      if (restoreDemoCartBtn) {
+        restoreDemoCartBtn.onclick = () => {
+          state.cart = [...window.STYLE_SEED_CART];
+          persistLocal();
+          render();
+        };
+      }
+
+      document.querySelectorAll(".cart-dec-btn").forEach((btn) => {
+        btn.onclick = () => {
+          const idx = Number(btn.dataset.idx);
+          if (!state.cart[idx]) return;
+          state.cart[idx].qty -= 1;
+          if (state.cart[idx].qty <= 0) state.cart.splice(idx, 1);
+          persistLocal();
+          render();
+        };
+      });
+
+      document.querySelectorAll(".cart-inc-btn").forEach((btn) => {
+        btn.onclick = () => {
+          const idx = Number(btn.dataset.idx);
+          if (!state.cart[idx]) return;
+          state.cart[idx].qty += 1;
+          persistLocal();
+          render();
+        };
+      });
+
+      document.querySelectorAll(".cart-remove-btn").forEach((btn) => {
+        btn.onclick = () => {
+          const idx = Number(btn.dataset.idx);
+          state.cart.splice(idx, 1);
+          persistLocal();
+          render();
+        };
+      });
+
+      document.querySelectorAll(".cart-to-fav-btn").forEach((btn) => {
+        btn.onclick = () => {
+          const id = btn.dataset.id;
+          if (!state.favorites.includes(id)) state.favorites.push(id);
+          persistLocal();
+          notify("Товар сохранён в Избранное ♡");
+        };
+      });
+
+      // Промокод
+      const promoForm = document.getElementById("apply-promo-form");
+      if (promoForm) {
+        promoForm.onsubmit = (e) => {
+          e.preventDefault();
+          const code = (document.getElementById("cart-promo-input").value || "").trim().toUpperCase();
+          state.promoInput = code;
+          const found = PROMOS.find((p) => p.code === code);
+          if (!found) {
+            state.appliedPromo = null;
+            state.promoMessage = "Промокод не найден. Попробуйте STYLE15, AUTUMN26 или KASPI10.";
+          } else {
+            state.appliedPromo = found;
+            state.promoMessage = `Промокод ${found.code} применён: дополнительная скидка -${found.discount}%!`;
+          }
+          render();
+        };
+      }
+
+      // Оформление заказа и 1 клик
+      const proceedBtn = document.getElementById("proceed-checkout-btn");
+      if (proceedBtn) proceedBtn.onclick = () => { state.checkoutModalOpen = true; state.oneClickModalOpen = false; render(); };
+
+      const oneClickBtn = document.getElementById("quick-1click-btn");
+      if (oneClickBtn) oneClickBtn.onclick = () => { state.oneClickModalOpen = true; state.checkoutModalOpen = false; render(); };
+
+      const closeCoBtn = document.getElementById("close-checkout-modal-btn");
+      const cancelCoBtn = document.getElementById("cancel-checkout-btn");
+      [closeCoBtn, cancelCoBtn].forEach((b) => {
+        if (b) b.onclick = () => { state.checkoutModalOpen = false; state.oneClickModalOpen = false; render(); };
+      });
+
+      document.querySelectorAll(".pay-method-btn").forEach((b) => {
+        b.onclick = () => { state.paymentMethod = b.dataset.pm; render(); };
+      });
+
+      const submitOrderForm = document.getElementById("submit-order-form");
+      if (submitOrderForm) {
+        submitOrderForm.onsubmit = async (e) => {
+          e.preventDefault();
+          const { itemsSubtotal, totalDiscount, finalTotal } = computeCartTotals();
+          const name = document.getElementById("co-name")?.value.trim() || state.customerName;
+          const phone = document.getElementById("co-phone")?.value.trim() || state.customerPhone;
+          const city = document.getElementById("co-city")?.value.trim() || state.customerCity;
+          const address = document.getElementById("co-address")?.value.trim() || state.customerAddress;
+
+          const nextNum = state.orders.length
+            ? Math.max(...state.orders.map((o) => Number(o.number) || 8400)) + 1
+            : 8405;
+
+          const newOrder = {
+            id: `ord-${Date.now()}`,
+            number: nextNum,
+            customer: name,
+            phone,
+            email: state.customerEmail,
+            deliveryType: "courier",
+            city,
+            address,
+            paymentMethod: state.paymentMethod,
+            paymentStatus: "paid",
+            transactionId: `${state.paymentMethod.toUpperCase()}-${nextNum}`,
+            status: "new",
+            subtotal: itemsSubtotal,
+            discount: totalDiscount,
+            total: finalTotal,
+            sellerName: "Интернет-магазин",
+            createdAt: Date.now(),
+            items: state.cart.map((c) => ({
+              sku: c.sku,
+              name: c.name,
+              brand: c.brand,
+              size: c.size,
+              color: c.color,
+              qty: c.qty,
+              price: c.price
+            }))
+          };
+
+          state.orders.unshift(newOrder);
+          state.cart = [];
+          state.appliedPromo = null;
+          state.promoInput = "";
+          state.checkoutModalOpen = false;
+          state.oneClickModalOpen = false;
+          persistLocal();
+
+          const sb = getSbClient();
+          if (sb) {
+            try {
+              await sb.from("orders").insert({
+                id: newOrder.id,
+                order_number: newOrder.number,
+                customer_name: newOrder.customer,
+                customer_phone: newOrder.phone,
+                customer_email: newOrder.email,
+                delivery_type: newOrder.deliveryType,
+                city: newOrder.city,
+                address: newOrder.address,
+                payment_method: newOrder.paymentMethod,
+                payment_status: "paid",
+                transaction_id: newOrder.transactionId,
+                status: "new",
+                subtotal_amount: newOrder.subtotal,
+                discount_amount: newOrder.discount,
+                total_amount: newOrder.total,
+                items: newOrder.items
+              });
+            } catch (_) {}
+          }
+
+          notify(`Заказ №${nextNum} на сумму ${fmt(finalTotal)} успешно оформлен и передан в портал персонала!`);
+        };
+      }
+
+      // Настройки Supabase & Storage
+      const openSbBtn = document.getElementById("open-sb-modal-btn");
+      const footerSbBtn = document.getElementById("footer-open-sb-btn");
+      [openSbBtn, footerSbBtn].forEach((b) => {
+        if (b) b.onclick = () => { state.sbModalOpen = true; state.sbStatusMsg = ""; render(); };
+      });
+      const closeSbBtn = document.getElementById("close-sb-modal-btn");
+      if (closeSbBtn) closeSbBtn.onclick = () => { state.sbModalOpen = false; render(); };
+
+      const sbSaveOnlyBtn = document.getElementById("sb-save-only-btn");
+      if (sbSaveOnlyBtn) {
+        sbSaveOnlyBtn.onclick = async () => {
+          state.sbUrl = document.getElementById("sb-modal-url").value.trim();
+          state.sbKey = document.getElementById("sb-modal-key").value.trim();
+          state.sbBucket = document.getElementById("sb-modal-bucket").value.trim() || "product-images";
+          state.aiFn = document.getElementById("sb-modal-aifn").value.trim() || "style-ai";
+          sbClient = null;
+          window.saveStyleConfig(state.sbUrl, state.sbKey, state.sbBucket, state.aiFn);
+          await syncFromSupabase();
+          state.sbModalOpen = false;
+          notify("Ключи Supabase сохранены и синхронизированы!");
+        };
+      }
+
+      const sbSeedStorageBtn = document.getElementById("sb-seed-storage-btn");
+      if (sbSeedStorageBtn) {
+        sbSeedStorageBtn.onclick = async () => {
+          state.sbUrl = document.getElementById("sb-modal-url").value.trim();
+          state.sbKey = document.getElementById("sb-modal-key").value.trim();
+          state.sbBucket = document.getElementById("sb-modal-bucket").value.trim() || "product-images";
+          state.aiFn = document.getElementById("sb-modal-aifn").value.trim() || "style-ai";
+          sbClient = null;
+          window.saveStyleConfig(state.sbUrl, state.sbKey, state.sbBucket, state.aiFn);
+
+          const sb = getSbClient();
+          if (!sb) {
+            state.sbStatusMsg = "Укажите корректные Supabase Project URL и API Key.";
+            render();
+            return;
+          }
+
+          state.sbSyncing = true;
+          state.sbStatusMsg = "Подключение к Supabase Storage и выгрузка фотографий товаров...";
+          render();
+
+          try {
+            const res = await window.syncAllCatalogAndImagesToSupabase(
+              sb,
+              state.products,
+              state.sbBucket,
+              (msg) => {
+                state.sbStatusMsg = msg;
+                render();
+              }
+            );
+            state.products = res.updatedProducts;
+            state.sbConnected = true;
+            state.sbSyncing = false;
+            state.sbStatusMsg = `Готово! В Supabase Storage (${state.sbBucket}) сохранено фото: ${res.uploadedCount} шт., каталог синхронизирован.`;
+            persistLocal();
+            render();
+          } catch (err) {
+            state.sbSyncing = false;
+            state.sbStatusMsg = `Ошибка: ${err.message || String(err)}`;
+            render();
+          }
+        };
+      }
+
+      // Инфо-ссылки в верхней полосе
+      document.querySelectorAll(".info-link-btn").forEach((b) => {
+        b.onclick = () => { state.infoModal = b.dataset.info; render(); };
+      });
+      const closeInfoBtn = document.getElementById("close-info-modal-btn");
+      if (closeInfoBtn) closeInfoBtn.onclick = () => { state.infoModal = null; render(); };
+    }
+
+    function addProductToCart(p, sizeLabel = "M", colorName = "классический") {
+      const existing = state.cart.find((c) => c.id === p.id && c.size === sizeLabel);
+      const unitBaseForCart = p.old_price ? Number(p.base_price) : Number(p.base_price);
+      if (existing) {
+        existing.qty += 1;
+      } else {
+        state.cart.push({
+          id: p.id,
+          sku: p.sku || "WO-8410",
+          brand: p.brand,
+          name: p.name,
+          size: sizeLabel,
+          color: colorName.toLowerCase(),
+          price: unitBaseForCart,
+          old_price: p.old_price || null,
+          promo_discount: 0,
+          qty: 1,
+          image: p.image
+        });
+      }
+      persistLocal();
+      notify(`«${p.name}» (размер ${sizeLabel}) добавлен в корзину!`);
+    }
+
+    // ==================== ИИ-СТИЛИСТ ====================
+    function formatAiText(text) {
+      return escapeHtml(text)
+        .replace(/\*\*(.+?)\*\*/g, "<b>$1</b>")
+        .replace(/\*(.+?)\*/g, "<i>$1</i>")
+        .replace(/`([^`]+)`/g, '<code class="px-1 py-0.5 rounded bg-slate-200 text-slate-900 font-mono text-[11px] font-bold">$1</code>')
+        .replace(/\n/g, "<br>");
+    }
+
+    function appendAiMessage(role, html) {
+      const box = document.getElementById("aiMessages");
+      const div = document.createElement("div");
+      div.className = `ai-msg ${role === "user" ? "ai-msg-user" : "ai-msg-bot"}`;
+      div.innerHTML = html;
+      box.appendChild(div);
+      box.scrollTop = box.scrollHeight;
+      return div;
+    }
+
+    async function askClientAi(text) {
+      const clean = (text || "").trim();
+      if (!clean) return;
+      appendAiMessage("user", escapeHtml(clean));
+      aiHistory.push({ role: "user", parts: [{ text: clean }] });
+
+      const loading = appendAiMessage("bot", "Подбираю рекомендации по каталогу...");
+      const btn = document.getElementById("aiSendBtn");
+      const inp = document.getElementById("aiInput");
+      btn.disabled = true;
+      inp.disabled = true;
+
+      try {
+        const res = await window.callStyleAi({
+          sbUrl: state.sbUrl,
+          sbKey: state.sbKey,
+          aiFn: state.aiFn,
+          systemPrompt: `Ты "Стиль AI" — персональный стилист магазина одежды "Стиль & Образ". Все цены в тенге (₸). В каталоге ${state.products.length} моделей верхней одежды, обуви и спорта.`,
+          history: aiHistory,
+          userText: clean,
+          dbSnapshot: {
+            isStaff: false,
+            products: state.products,
+            orders: state.orders
+          }
+        });
+        aiHistory.push({ role: "model", parts: [{ text: res.reply }] });
+        loading.innerHTML = formatAiText(res.reply);
+      } catch (err) {
+        loading.innerHTML = `Ошибка: ${escapeHtml(err.message || String(err))}`;
+      } finally {
+        btn.disabled = false;
+        inp.disabled = false;
+        inp.focus();
+      }
+    }
+
+    function setupAiWidget() {
+      const fab = document.getElementById("aiFab");
+      const panel = document.getElementById("aiPanel");
+      const close = document.getElementById("aiClose");
+      const clear = document.getElementById("aiClear");
+      const form = document.getElementById("aiForm");
+      const inp = document.getElementById("aiInput");
+
+      fab.onclick = () => {
+        panel.classList.toggle("hidden");
+        if (!panel.classList.contains("hidden")) inp.focus();
+      };
+      close.onclick = () => panel.classList.add("hidden");
+      clear.onclick = () => {
+        aiHistory = [];
+        document.getElementById("aiMessages").innerHTML = `<div class="ai-msg ai-msg-bot">Чат очищен. Спросите меня про размеры, модели пальто и курток или промокоды!</div>`;
+      };
+      form.onsubmit = async (e) => {
+        e.preventDefault();
+        const v = inp.value;
+        inp.value = "";
+        await askClientAi(v);
+      };
+      document.querySelectorAll(".ai-quick").forEach((b) => {
+        b.onclick = () => askClientAi(b.dataset.prompt);
+      });
+    }
+
+    render();
+    setupAiWidget();
+    syncFromSupabase();
+  </script>
+</body>
+</html>
